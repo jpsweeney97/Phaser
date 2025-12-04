@@ -84,6 +84,7 @@ When the last phase finishes, Claude Code automatically:
 | Marker | Meaning |
 |--------|---------|
 | `[ ]` | Incomplete (pending) |
+| `[IN PROGRESS]` | Execution started, was interrupted |
 | `[x]` | Complete (verified) |
 | `[SKIPPED]` | Skipped by user |
 

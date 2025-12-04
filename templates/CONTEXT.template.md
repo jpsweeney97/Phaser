@@ -41,6 +41,7 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 **Legend:**
 
 - [ ] = Incomplete (pending)
+- [IN PROGRESS] = Execution started, not yet verified
 - [x] = Complete (verified)
 - [SKIPPED] = Skipped by user
 
@@ -68,24 +69,35 @@ Recognize these commands from the user (case-insensitive, flexible phrasing):
 When executing a phase:
 
 1. Identify the first phase marked [ ] (incomplete)
-2. If no incomplete phases exist, trigger completion (see Rule 5)
-3. Read the corresponding file: .audit/phases/{NN}-{slug}.md
-4. Execute all instructions in the phase file
-5. Run verification steps (build, test, lint as applicable)
-6. Run verification commands from ## Verify section
-7. If ANY verification fails: treat as phase failure (retry logic applies)
-8. Only mark [x] after ALL verifications pass
-9. On success:
-   - Update this file: change [ ] to [x] for that phase
-   - Report: "Phase N complete: {description}"
-   - Check if all phases are now complete/skipped (trigger Rule 5 if yes)
-10. On failure:
+2. If phase is marked [IN PROGRESS], see Rule 1a
+3. If no incomplete phases exist, trigger completion (see Rule 5)
+4. Update this file: change [ ] to [IN PROGRESS] for that phase
+5. Read the corresponding file: .audit/phases/{NN}-{slug}.md
+6. Execute all instructions in the phase file
+7. Run verification steps (build, test, lint as applicable)
+8. Run verification commands from ## Verify section
+9. If ANY verification fails: treat as phase failure (retry logic applies)
+10. Only mark [x] after ALL verifications pass
+11. On success:
+    - Update this file: change [IN PROGRESS] to [x] for that phase
+    - Report: "Phase N complete: {description}"
+    - Check if all phases are now complete/skipped (trigger Rule 5 if yes)
+12. On failure:
+    - Attempt to fix the issue (up to 3 attempts)
+    - If fixed, proceed to success
+    - If still failing after 3 attempts, report what failed, what was attempted, and suggest alternatives
+    - Update this file: change [IN PROGRESS] back to [ ]
+    - Do NOT continue to next phase
 
-- Attempt to fix the issue (up to 3 attempts)
-- If fixed, proceed to success
-- If still failing after 3 attempts, report what failed, what was attempted, and suggest alternatives
-- Leave phase as [ ]
-- Do NOT continue to next phase
+### 1a. Handling Interrupted Phases
+
+If a phase is marked [IN PROGRESS] when starting:
+
+1. Warn user: "Phase N was interrupted. Changes may be partially applied."
+2. Offer options: "Say 'continue' to resume, 'rollback N' to undo, or 'skip' to skip."
+3. If continue: proceed with execution (phase instructions should be idempotent)
+4. If rollback: execute rollback commands from phase file, then mark [ ]
+5. If skip: mark [SKIPPED]
 
 ### 2. Phase Skipping
 
