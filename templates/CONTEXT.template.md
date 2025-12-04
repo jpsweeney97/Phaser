@@ -13,12 +13,15 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 
 ## Metadata
 
-| Field | Value |
-|-------|-------|
-| Project | {project_name} |
-| Audit | {audit_slug} |
-| Date | {YYYY-MM-DD} |
-| Version | 1 |
+| Field        | Value           |
+| ------------ | --------------- |
+| Project      | {project_name}  |
+| Audit        | {audit_slug}    |
+| Date         | {YYYY-MM-DD}    |
+| Version      | 1               |
+| Test Command | {test_command}  |
+
+> **Note:** Default test_command is `make test`. Set appropriately for your project (`npm test`, `pytest`, `xcodebuild test`, `cargo test`, etc.).
 
 ---
 
@@ -33,9 +36,10 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 - [ ] Phase 1: {description}
 - [ ] Phase 2: {description}
 - [ ] Phase 3: {description}
-{... add more phases as needed}
+      {... add more phases as needed}
 
 **Legend:**
+
 - [ ] = Incomplete (pending)
 - [x] = Complete (verified)
 - [SKIPPED] = Skipped by user
@@ -46,14 +50,14 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 
 Recognize these commands from the user (case-insensitive, flexible phrasing):
 
-| User Says | Action |
-|-----------|--------|
-| "next", "continue", "proceed", "go" | Execute next incomplete phase |
-| "skip", "skip this", "skip phase N" | Mark phase as SKIPPED |
+| User Says                                  | Action                                |
+| ------------------------------------------ | ------------------------------------- |
+| "next", "continue", "proceed", "go"        | Execute next incomplete phase         |
+| "skip", "skip this", "skip phase N"        | Mark phase as SKIPPED                 |
 | "redo N", "redo phase N", "re-run phase N" | Reset phase to incomplete and execute |
-| "status", "audit status", "show status" | Display phase checklist |
-| "abandon", "abandon audit" | Delete .audit/ without archiving |
-| "show full audit", "full report" | Display contents of CURRENT.md |
+| "status", "audit status", "show status"    | Display phase checklist               |
+| "abandon", "abandon audit"                 | Delete .audit/ without archiving      |
+| "show full audit", "full report"           | Display contents of CURRENT.md        |
 
 ---
 
@@ -68,16 +72,20 @@ When executing a phase:
 3. Read the corresponding file: .audit/phases/{NN}-{slug}.md
 4. Execute all instructions in the phase file
 5. Run verification steps (build, test, lint as applicable)
-6. On success:
+6. Run verification commands from ## Verify section
+7. If ANY verification fails: treat as phase failure (retry logic applies)
+8. Only mark [x] after ALL verifications pass
+9. On success:
    - Update this file: change [ ] to [x] for that phase
    - Report: "Phase N complete: {description}"
    - Check if all phases are now complete/skipped (trigger Rule 5 if yes)
-7. On failure:
-   - Attempt to fix the issue (up to 3 attempts)
-   - If fixed, proceed to success
-   - If still failing after 3 attempts, report what failed, what was attempted, and suggest alternatives
-   - Leave phase as [ ]
-   - Do NOT continue to next phase
+10. On failure:
+
+- Attempt to fix the issue (up to 3 attempts)
+- If fixed, proceed to success
+- If still failing after 3 attempts, report what failed, what was attempted, and suggest alternatives
+- Leave phase as [ ]
+- Do NOT continue to next phase
 
 ### 2. Phase Skipping
 
@@ -109,17 +117,21 @@ When user requests status:
 Triggered when all phases are [x] or [SKIPPED]:
 
 1. Run final verification:
-   - Execute: make test (or appropriate test command)
+
+   - Execute the Test Command specified in Metadata above
    - If tests fail: report failure, do NOT proceed with archive, leave .audit/ in place
 
 2. Commit any uncommitted changes:
+
    - Check: git status --porcelain
    - If changes exist: git add -A && git commit -m "Complete {audit_slug} audit"
 
 3. Create archive directory:
+
    - Create ~/Documents/Audits/{project_name}/ if it doesn't exist
 
 4. Determine archive filename:
+
    - If ALL phases are [SKIPPED]: {date}-{audit_slug}-SKIPPED.md
    - Otherwise: {date}-{audit_slug}.md
    - If filename exists, append -2, -3, etc. until unique
@@ -127,6 +139,7 @@ Triggered when all phases are [x] or [SKIPPED]:
 5. Copy .audit/CURRENT.md to archive path
 
 6. Create git tag:
+
    - Execute: git tag audit/{date}-{audit_slug}
    - If tag exists, append -2, -3, etc.
 
@@ -150,13 +163,13 @@ When user requests abandon:
 
 ### 7. Error Handling
 
-| Situation | Response |
-|-----------|----------|
-| "next" but no .audit/ exists | "No active audit found." |
-| "skip phase 99" (invalid) | "Invalid phase number. This audit has N phases." |
-| Phase file missing | "Phase file not found: {path}. Check .audit/phases/ directory." |
-| Cannot create archive directory | Report error and suggest manual creation |
-| Cannot delete .audit/ | Report error and suggest manual deletion |
+| Situation                       | Response                                                        |
+| ------------------------------- | --------------------------------------------------------------- |
+| "next" but no .audit/ exists    | "No active audit found."                                        |
+| "skip phase 99" (invalid)       | "Invalid phase number. This audit has N phases."                |
+| Phase file missing              | "Phase file not found: {path}. Check .audit/phases/ directory." |
+| Cannot create archive directory | Report error and suggest manual creation                        |
+| Cannot delete .audit/           | Report error and suggest manual deletion                        |
 
 ---
 

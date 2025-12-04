@@ -86,6 +86,7 @@ Use the templates in `templates/`:
 
 1. **CONTEXT.md** from `CONTEXT.template.md`
    - Fill in metadata
+   - Set Test Command appropriately if project doesn't use `make test`
    - List all phases in status section
    - Add project-specific context
 
