@@ -29,6 +29,29 @@ Or manually copy the content from `global-claude-snippet.md` into your `~/.claud
 
 ## Usage
 
+### Security Note: Permission Flag
+
+Phaser requires `--dangerously-skip-permissions` because it needs to:
+
+- Create the `.audit/` directory and files
+- Modify `.gitignore`
+- Create archives in `~/Documents/Audits/`
+- Create git tags
+
+**Risks:**
+
+- Claude Code can modify any file without prompting
+- Malformed audit blocks could write to unintended paths
+- No confirmation before destructive operations
+
+**Mitigations:**
+
+- Only use with audits from trusted sources (your own claude.ai sessions)
+- Review the setup block before pasting
+- Ensure you have git commits to revert to
+
+**Alternative:** Run without the flag and approve each file operation manually (slower but safer for untrusted audits).
+
 ### 1. Get an Audit
 
 In claude.ai, ask for an audit:
