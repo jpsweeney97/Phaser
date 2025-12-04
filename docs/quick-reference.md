@@ -74,7 +74,7 @@ When the last phase finishes, Claude Code automatically:
 | Full report | `{project}/.audit/CURRENT.md` |
 | Context + rules | `{project}/.audit/CONTEXT.md` |
 | Phase prompts | `{project}/.audit/phases/` |
-| Archives | `~/Documents/Audits/{project}/` |
+| Archives | `~/Documents/Audits/{project}/` (macOS) or `~/.local/share/phaser/audits/{project}/` (Linux) |
 | Global config | `~/.claude/CLAUDE.md` |
 
 ---

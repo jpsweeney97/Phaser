@@ -20,8 +20,11 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 | Date         | {YYYY-MM-DD}    |
 | Version      | 1               |
 | Test Command | {test_command}  |
+| Archive Dir  | {archive_dir or "auto"} |
 
 > **Note:** Default test_command is `make test`. Set appropriately for your project (`npm test`, `pytest`, `xcodebuild test`, `cargo test`, etc.).
+
+> **Note:** Default archive location is `~/Documents/Audits/` (macOS) or `~/.local/share/phaser/audits/` (Linux). Override with `PHASER_ARCHIVE_DIR` environment variable.
 
 ---
 
@@ -153,7 +156,11 @@ Triggered when all phases are [x] or [SKIPPED]:
 
 3. Prepare archive:
 
-   - Create ~/Documents/Audits/{project_name}/ if it doesn't exist
+   - Determine archive base directory:
+     - If `PHASER_ARCHIVE_DIR` environment variable is set: use that
+     - If macOS: use `~/Documents/Audits/`
+     - If Linux: use `~/.local/share/phaser/audits/`
+   - Create {archive_base}/{project_name}/ if it doesn't exist
    - Determine final filename:
      - If ALL phases are [SKIPPED]: {date}-{audit_slug}-SKIPPED.md
      - Otherwise: {date}-{audit_slug}.md
@@ -208,7 +215,7 @@ When user requests abandon:
 If archive fails at any step, .audit/ is preserved. User options:
 
 - Fix the issue (free disk space, fix permissions) and say "next" to retry completion
-- Manually copy: `cp .audit/CURRENT.md ~/Documents/Audits/{project}/{date}-{slug}.md`
+- Manually copy to archive location (see Metadata for path)
 - Say "abandon" to delete .audit/ without archiving
 
 ---

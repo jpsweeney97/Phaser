@@ -125,10 +125,18 @@ YourProject/
 └── ... your code
 ```
 
-On completion, archived to:
-```
-~/Documents/Audits/YourProject/2024-12-04-audit-slug.md
-```
+On completion, archived (see Archive Location below).
+
+---
+
+## Archive Location
+
+Completed audits are archived to:
+
+- **macOS:** `~/Documents/Audits/{project}/`
+- **Linux:** `~/.local/share/phaser/audits/{project}/`
+
+Override with: `export PHASER_ARCHIVE_DIR=~/my/custom/path`
 
 ---
 
