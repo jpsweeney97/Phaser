@@ -168,6 +168,7 @@ Before delivering:
 - [ ] Setup block has no markdown fences inside
 - [ ] CONTEXT.md has correct phase count
 - [ ] Metadata is accurate
+- [ ] CHECKSUM line included for integrity verification (recommended for large audits)
 
 ---
 

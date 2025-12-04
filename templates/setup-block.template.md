@@ -137,3 +137,25 @@ git checkout -- example.swift
 | Phase files | `NN-slug.md` | `01-export-service-di.md` |
 | Archive | `{date}-{slug}.md` | `2024-12-04-architecture-refactor.md` |
 | Git tag | `audit/{date}-{slug}` | `audit/2024-12-04-architecture-refactor` |
+
+---
+
+## Integrity Verification (Recommended)
+
+Add a checksum line immediately before the closing delimiter:
+
+```
+CHECKSUM: sha256:{64-character-hex-hash}
+=== AUDIT SETUP END ===
+```
+
+The hash covers all content from `=== AUDIT SETUP START ===` up to (not including) the CHECKSUM line.
+
+**Claude Code validation procedure:**
+
+1. Extract content between START marker and CHECKSUM line
+2. Compute SHA256 hash of that content
+3. Compare to stated checksum
+4. If mismatch: "Setup block appears truncated or corrupted. Please re-copy the complete block from source."
+
+This catches truncated pastes and copy errors before they cause confusing failures.

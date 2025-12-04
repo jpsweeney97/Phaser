@@ -7,6 +7,8 @@
 3. Paste the copied block
 4. Claude Code will parse the `===FILE: path===` markers and create each file
 
+> **Note:** This example omits the CHECKSUM line for readability. Production audits with many phases should include integrity verification.
+
 ---
 
 === AUDIT SETUP START ===
