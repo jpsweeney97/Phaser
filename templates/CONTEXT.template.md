@@ -151,26 +151,34 @@ Triggered when all phases are [x] or [SKIPPED]:
    - Check: git status --porcelain
    - If changes exist: git add -A && git commit -m "Complete {audit_slug} audit"
 
-3. Create archive directory:
+3. Prepare archive:
 
    - Create ~/Documents/Audits/{project_name}/ if it doesn't exist
+   - Determine final filename:
+     - If ALL phases are [SKIPPED]: {date}-{audit_slug}-SKIPPED.md
+     - Otherwise: {date}-{audit_slug}.md
+   - If filename exists, try -2, -3, etc. (max -99, then error)
+   - Set temp_path = {final_path}.tmp
 
-4. Determine archive filename:
+4. Atomic archive:
 
-   - If ALL phases are [SKIPPED]: {date}-{audit_slug}-SKIPPED.md
-   - Otherwise: {date}-{audit_slug}.md
-   - If filename exists, append -2, -3, etc. until unique
+   - Copy .audit/CURRENT.md to temp_path
+   - Verify: temp_path exists AND has size > 0
+   - If verification fails: report "Archive failed: could not write to {temp_path}", leave .audit/ intact, STOP
+   - Rename temp_path to final_path (atomic on POSIX filesystems)
+   - If rename fails: report error, leave .audit/ intact, STOP
+   - Verify: final_path exists
 
-5. Copy .audit/CURRENT.md to archive path
-
-6. Create git tag:
+5. Create git tag:
 
    - Execute: git tag audit/{date}-{audit_slug}
    - If tag exists, append -2, -3, etc.
 
-7. Delete .audit/ folder entirely
+6. Only after successful archive and tag:
 
-8. Report summary:
+   - Delete .audit/ folder entirely
+
+7. Report summary:
    - "Audit complete."
    - "Phases: N completed, M skipped"
    - "Commits made: (list recent commits from this audit)"
@@ -195,6 +203,13 @@ When user requests abandon:
 | Phase file missing              | "Phase file not found: {path}. Check .audit/phases/ directory." |
 | Cannot create archive directory | Report error and suggest manual creation                        |
 | Cannot delete .audit/           | Report error and suggest manual deletion                        |
+
+**Archive Failure Recovery:**
+If archive fails at any step, .audit/ is preserved. User options:
+
+- Fix the issue (free disk space, fix permissions) and say "next" to retry completion
+- Manually copy: `cp .audit/CURRENT.md ~/Documents/Audits/{project}/{date}-{slug}.md`
+- Say "abandon" to delete .audit/ without archiving
 
 ---
 

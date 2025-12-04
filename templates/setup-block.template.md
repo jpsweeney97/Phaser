@@ -47,10 +47,22 @@ SETUP INSTRUCTIONS FOR CLAUDE CODE:
 Parse this block and perform the following steps:
 
 1. ARCHIVE EXISTING AUDIT (if .audit/ folder exists):
-   - Read metadata from .audit/CONTEXT.md for project_name, audit_slug, audit_date
-   - Create ~/Documents/Audits/{project_name}/ if it doesn't exist
-   - Copy .audit/CURRENT.md to ~/Documents/Audits/{project_name}/{audit_date}-{audit_slug}-INCOMPLETE.md
-   - Delete .audit/ folder
+   a. Verify .audit/CONTEXT.md exists and is readable
+      - If missing: warn "Existing .audit/ folder is malformed (no CONTEXT.md)"
+      - Ask: "Say 'abandon' to delete it, or fix manually"
+      - Do NOT proceed until user responds
+   b. Read metadata from .audit/CONTEXT.md
+      - Extract: project_name, audit_slug, audit_date
+      - If any missing: use defaults (project_name=current_directory_name, audit_slug=unknown, audit_date=today)
+   c. Create ~/Documents/Audits/{project_name}/ if needed
+   d. Set temp_path = {archive_dir}/{audit_date}-{audit_slug}-INCOMPLETE.md.tmp
+   e. Copy .audit/CURRENT.md to temp_path
+   f. Verify temp_path exists and has content
+      - If failed: report error, do NOT delete .audit/, STOP
+   g. Rename temp_path to final (remove .tmp)
+   h. Verify final path exists
+      - If failed: report error, do NOT delete .audit/, STOP
+   i. Only now: delete .audit/ folder
 
 2. CREATE DIRECTORY STRUCTURE:
    - Create .audit/
