@@ -39,10 +39,12 @@ Project CLAUDE.md takes precedence over this global file for project-specific de
 
 ## Installation
 
-**Option A: Append directly**
+**Option A: Append directly (idempotent)**
 ```bash
-cat ~/Projects/Phaser/global-claude-snippet.md >> ~/.claude/CLAUDE.md
+grep -q "AUDIT-SYSTEM" ~/.claude/CLAUDE.md 2>/dev/null || cat ~/Projects/Phaser/global-claude-snippet.md >> ~/.claude/CLAUDE.md
 ```
+This command only appends if the AUDIT-SYSTEM marker is not already present, making it safe to run multiple times.
+
 Then edit `~/.claude/CLAUDE.md` to remove the explanatory text, keeping only the snippet.
 
 **Option B: Manual**

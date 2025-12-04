@@ -20,8 +20,10 @@ You paste an audit, say "next" repeatedly, and your codebase improves phase by p
 Add the Phaser trigger to your global Claude Code config:
 
 ```bash
-cat global-claude-snippet.md >> ~/.claude/CLAUDE.md
+grep -q "AUDIT-SYSTEM" ~/.claude/CLAUDE.md 2>/dev/null || cat global-claude-snippet.md >> ~/.claude/CLAUDE.md
 ```
+
+This command is idempotent—safe to run multiple times without creating duplicates.
 
 Or manually copy the content from `global-claude-snippet.md` into your `~/.claude/CLAUDE.md` file's "Project-Specific Context" section.
 
