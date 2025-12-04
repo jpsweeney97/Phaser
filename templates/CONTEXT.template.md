@@ -65,16 +65,56 @@ Claude Code validates these before creating archives or tags. Invalid names are 
 
 ## Commands
 
-Recognize these commands from the user (case-insensitive, flexible phrasing):
+Recognize these exact phrases (case-insensitive):
 
-| User Says                                  | Action                                |
-| ------------------------------------------ | ------------------------------------- |
-| "next", "continue", "proceed", "go"        | Execute next incomplete phase         |
-| "skip", "skip this", "skip phase N"        | Mark phase as SKIPPED                 |
-| "redo N", "redo phase N", "re-run phase N" | Reset phase to incomplete and execute |
-| "status", "audit status", "show status"    | Display phase checklist               |
-| "abandon", "abandon audit"                 | Delete .audit/ without archiving      |
-| "show full audit", "full report"           | Display contents of CURRENT.md        |
+### Execute Next Phase
+
+- "next"
+- "continue"
+- "proceed"
+- "go"
+- "next phase"
+- "run next"
+- "run next phase"
+
+### Skip Phase
+
+- "skip" (skips next incomplete)
+- "skip this"
+- "skip phase N" (where N is phase number)
+- "skip N"
+
+### Redo Phase
+
+- "redo N" (where N is phase number)
+- "redo phase N"
+- "re-run N"
+- "re-run phase N"
+- "rerun N"
+
+### Show Status
+
+- "status"
+- "audit status"
+- "show status"
+- "progress"
+- "show progress"
+
+### Abandon Audit
+
+- "abandon"
+- "abandon audit"
+- "cancel audit"
+- "delete audit"
+
+### Show Full Report
+
+- "show full audit"
+- "full report"
+- "show report"
+- "show current"
+
+**Not recognized:** Free-form requests like "what's next", "do the next thing", or "can you run phase 3" — use the exact phrases above.
 
 ---
 

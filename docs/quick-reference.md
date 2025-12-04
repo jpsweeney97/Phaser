@@ -6,19 +6,68 @@ The audit automation system for Claude Code.
 
 ## Commands
 
-| Say This | Claude Code Does |
-|----------|------------------|
+All commands are case-insensitive.
+
+### Execute Next Phase
+
+| Say This | Effect |
+|----------|--------|
 | `next` | Execute next incomplete phase |
 | `continue` | Same as next |
 | `proceed` | Same as next |
 | `go` | Same as next |
+| `next phase` | Same as next |
+| `run next` | Same as next |
+| `run next phase` | Same as next |
+
+### Skip Phase
+
+| Say This | Effect |
+|----------|--------|
 | `skip` | Skip next incomplete phase |
-| `skip phase 3` | Skip specific phase |
-| `redo 2` | Re-run phase 2 |
-| `redo phase 5` | Re-run phase 5 |
+| `skip this` | Same as skip |
+| `skip phase N` | Skip specific phase (e.g., `skip phase 3`) |
+| `skip N` | Same as skip phase N |
+
+### Redo Phase
+
+| Say This | Effect |
+|----------|--------|
+| `redo N` | Re-run phase N (e.g., `redo 2`) |
+| `redo phase N` | Same as redo N |
+| `re-run N` | Same as redo N |
+| `re-run phase N` | Same as redo N |
+| `rerun N` | Same as redo N |
+
+### Show Status
+
+| Say This | Effect |
+|----------|--------|
 | `status` | Show phase checklist |
+| `audit status` | Same as status |
+| `show status` | Same as status |
+| `progress` | Same as status |
+| `show progress` | Same as status |
+
+### Abandon Audit
+
+| Say This | Effect |
+|----------|--------|
 | `abandon` | Delete audit without archiving |
+| `abandon audit` | Same as abandon |
+| `cancel audit` | Same as abandon |
+| `delete audit` | Same as abandon |
+
+### Show Full Report
+
+| Say This | Effect |
+|----------|--------|
 | `show full audit` | Display CURRENT.md |
+| `full report` | Same as show full audit |
+| `show report` | Same as show full audit |
+| `show current` | Same as show full audit |
+
+**Not recognized:** Free-form requests like "what's next" or "can you run phase 3" — use the exact phrases above.
 
 ---
 
