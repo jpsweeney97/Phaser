@@ -68,4 +68,4 @@ Should return:
 
 ---
 
-*Phaser v1*
+*Phaser v1.1*

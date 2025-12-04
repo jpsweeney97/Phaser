@@ -178,4 +178,4 @@ Before delivering:
 
 ---
 
-*Phaser v1*
+*Phaser v1.1*

@@ -166,4 +166,4 @@ rm -rf .audit/
 
 ---
 
-*Phaser v1 — December 2024*
+*Phaser v1.1*

@@ -18,10 +18,22 @@ SETUP INSTRUCTIONS FOR CLAUDE CODE:
 Parse this block and perform the following steps:
 
 1. ARCHIVE EXISTING AUDIT (if .audit/ folder exists):
-   - Read metadata from .audit/CONTEXT.md for project_name, audit_slug, audit_date
-   - Create ~/Documents/Audits/{project_name}/ if it doesn't exist
-   - Copy .audit/CURRENT.md to ~/Documents/Audits/{project_name}/{audit_date}-{audit_slug}-INCOMPLETE.md
-   - Delete .audit/ folder
+   a. Verify .audit/CONTEXT.md exists and is readable
+      - If missing: warn "Existing .audit/ folder is malformed (no CONTEXT.md)"
+      - Ask: "Say 'abandon' to delete it, or fix manually"
+      - Do NOT proceed until user responds
+   b. Read metadata from .audit/CONTEXT.md
+      - Extract: project_name, audit_slug, audit_date
+      - If any missing: use defaults (project_name=current_directory_name, audit_slug=unknown, audit_date=today)
+   c. Create ~/Documents/Audits/{project_name}/ if needed
+   d. Set temp_path = {archive_dir}/{audit_date}-{audit_slug}-INCOMPLETE.md.tmp
+   e. Copy .audit/CURRENT.md to temp_path
+   f. Verify temp_path exists and has content
+      - If failed: report error, do NOT delete .audit/, STOP
+   g. Rename temp_path to final (remove .tmp)
+   h. Verify final path exists
+      - If failed: report error, do NOT delete .audit/, STOP
+   i. Only now: delete .audit/ folder
 
 2. CREATE DIRECTORY STRUCTURE:
    - Create .audit/
@@ -31,27 +43,23 @@ Parse this block and perform the following steps:
    - For each ===FILE: {path}=== section below, create the file at that path
    - Write all content between ===FILE: {path}=== and ===END FILE=== to that file
 
-4. UPDATE .gitignore:
+4. VALIDATE METADATA:
+   - Read project_name and audit_slug from .audit/CONTEXT.md
+   - Verify both start with alphanumeric and contain only allowed characters (a-z, A-Z, 0-9, hyphen, underscore)
+   - Verify neither contains / or \
+   - Verify neither exceeds 50 characters
+   - If invalid: report error with valid name examples, delete .audit/, abort
+
+5. UPDATE .gitignore:
    - If .gitignore exists and doesn't contain ".audit/", append it
    - If .gitignore doesn't exist, create it with ".audit/" as content
 
-5. UPDATE GLOBAL CLAUDE.md (first audit only):
+6. UPDATE GLOBAL CLAUDE.md (first audit only):
    - Read ~/.claude/CLAUDE.md
    - Search for "<!-- AUDIT-SYSTEM -->"
-   - If NOT found, append this to the "Project-Specific Context" section:
-     
-     <!-- AUDIT-SYSTEM -->
-     **Active Audit System:**
-     If `.audit/` exists in the current project, read `.audit/CONTEXT.md` immediately before starting any work. It contains:
-     - Current audit context and scope
-     - Phase status checklist  
-     - Automation rules for executing, skipping, and archiving
-     - Commands you should recognize (next, skip, status, etc.)
-     
-     Follow all instructions in CONTEXT.md precisely. Phase completion, archiving, and state management are handled automatically based on those rules.
-     <!-- /AUDIT-SYSTEM -->
+   - If NOT found, append the Phaser snippet to the "Project-Specific Context" section
 
-6. CONFIRM:
+7. CONFIRM:
    - List all files created
    - Note any modifications to .gitignore or ~/.claude/CLAUDE.md
    - Say: "Audit ready. Say 'next' to begin Phase 1."
