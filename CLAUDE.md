@@ -128,4 +128,4 @@ See `docs/creating-audits.md` for detailed instructions.
 
 ---
 
-*Phaser v1 — December 2024*
+*Phaser v1.1*

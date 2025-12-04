@@ -161,4 +161,4 @@ See `examples/impromptu-setup-block.md` for a complete audit of a macOS SwiftUI 
 
 ---
 
-*Phaser v1 — December 2024*
+*Phaser v1.1*
