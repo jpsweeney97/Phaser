@@ -37,6 +37,15 @@ Use this template for each phase. Replace all `{placeholders}`.
    make build
    make test
 
+## Verify
+
+{Commands that must succeed before marking complete. All must exit 0.}
+
+grep -q "expected content" path/to/file
+test -f path/to/new/file
+test -s path/to/file
+! grep -q "removed content" path/to/file
+
 ## Acceptance Criteria
 
 - [ ] {Specific criterion 1}
@@ -129,6 +138,24 @@ Phase instructions should be idempotent (safe to run twice) when possible:
 - Use grep to verify before adding lines
 
 This prevents duplicate changes if a phase is interrupted and restarted.
+
+### Verification Best Practices
+
+Write verifications that:
+
+- Are idempotent (safe to run multiple times)
+- Check outcomes, not actions ("file contains X" not "I ran sed")
+- Cover each acceptance criterion with at least one command
+- Fail fast with clear signal (exit non-zero)
+
+Common patterns:
+
+- `grep -q "pattern" file` — content exists
+- `! grep -q "pattern" file` — content removed
+- `test -f file` — file exists
+- `test -s file` — file exists and non-empty
+- `test ! -f file` — file does not exist
+- `head -1 file | grep -q "pattern"` — first line matches
 
 ---
 

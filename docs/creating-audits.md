@@ -172,6 +172,9 @@ Before delivering:
 - [ ] CONTEXT.md has correct phase count
 - [ ] Metadata is accurate
 - [ ] CHECKSUM line included for integrity verification (recommended for large audits)
+- [ ] Each phase has ## Verify section with executable checks
+- [ ] Verify commands cover all acceptance criteria
+- [ ] Verify commands are idempotent
 
 ---
 
