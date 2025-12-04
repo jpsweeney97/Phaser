@@ -9,3 +9,6 @@
 # Temporary files
 *.tmp
 *.bak
+
+# Phaser audit workspace
+.audit/

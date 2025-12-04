@@ -153,7 +153,7 @@ Phaser/
 | "No active audit found" | Paste the setup block first |
 | Claude Code ignores "next" | Restart Claude Code, try again |
 | Phase fails repeatedly | Say `skip`, or fix manually |
-| Keychain dialogs during tests | Ensure Phase 6 mocks KeychainService |
+| Tests require credentials | Check if audit includes mock/stub phases for auth services |
 
 ---
 
