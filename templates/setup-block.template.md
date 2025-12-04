@@ -60,16 +60,23 @@ Parse this block and perform the following steps:
    - For each ===FILE: {path}=== section below, create the file at that path
    - Write all content between ===FILE: {path}=== and ===END FILE=== to that file
 
-4. UPDATE .gitignore:
+4. VALIDATE METADATA:
+   - Read project_name and audit_slug from .audit/CONTEXT.md
+   - Verify both start with alphanumeric and contain only allowed characters (a-z, A-Z, 0-9, hyphen, underscore)
+   - Verify neither contains / or \
+   - Verify neither exceeds 50 characters
+   - If invalid: report error with valid name examples, delete .audit/, abort
+
+5. UPDATE .gitignore:
    - If .gitignore exists and doesn't contain ".audit/", append it
    - If .gitignore doesn't exist, create it with ".audit/" as content
 
-5. UPDATE GLOBAL CLAUDE.md (first audit only):
+6. UPDATE GLOBAL CLAUDE.md (first audit only):
    - Read ~/.claude/CLAUDE.md
    - Search for "<!-- AUDIT-SYSTEM -->"
    - If NOT found, append the Phaser snippet to the "Project-Specific Context" section
 
-6. CONFIRM:
+7. CONFIRM:
    - List all files created
    - Note any modifications to .gitignore or ~/.claude/CLAUDE.md
    - Say: "Audit ready. Say 'next' to begin Phase 1."

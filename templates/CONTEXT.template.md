@@ -25,6 +25,19 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 
 ---
 
+## Naming Rules
+
+Project and Audit names must:
+
+- Start with alphanumeric character (a-z, A-Z, 0-9)
+- Contain only: letters, numbers, hyphen (-), underscore (\_)
+- Not contain path separators (/ or \)
+- Not exceed 50 characters
+
+Claude Code validates these before creating archives or tags. Invalid names are rejected with clear error message.
+
+---
+
 ## Summary
 
 {2-3 sentence summary of what this audit covers and its primary goals}
