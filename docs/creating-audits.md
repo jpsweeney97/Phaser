@@ -72,6 +72,8 @@ Each phase should:
 - Include verification steps
 - Be independently valuable
 
+See `templates/phase.template.md` for the required schema. All sections marked Required must be present.
+
 ### Dependencies
 If Phase B depends on Phase A:
 - Phase A comes first

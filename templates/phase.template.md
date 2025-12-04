@@ -90,6 +90,48 @@ rm -f path/to/new/files
 
 ---
 
+## Schema
+
+### Required Sections
+
+Every phase file MUST contain these sections in order:
+
+| Section                | Purpose                   | Validation                       |
+| ---------------------- | ------------------------- | -------------------------------- |
+| # Phase N: Title       | Identify phase            | Must start with "# Phase"        |
+| ## Context             | Why this change matters   | Non-empty paragraph              |
+| ## Goal                | Single success criterion  | One sentence/paragraph           |
+| ## Files               | What will be touched      | List with (create/modify/delete) |
+| ## Plan                | Step-by-step instructions | Numbered steps                   |
+| ## Verify              | Machine-executable checks | Bash commands, all must exit 0   |
+| ## Acceptance Criteria | Human-readable checklist  | Checkbox list                    |
+| ## Rollback            | How to undo if needed     | Git/rm commands                  |
+
+### Optional Sections
+
+| Section         | Purpose                                   |
+| --------------- | ----------------------------------------- |
+| ## Note         | Special instructions or warnings for user |
+| ## Dependencies | Other phases that must complete first     |
+
+### Validation
+
+Claude Code should verify all required sections exist before executing a phase.
+If any required section is missing, report:
+"Phase file malformed: missing ## {Section}. Check .audit/phases/{filename}."
+
+### Idempotency Guidance
+
+Phase instructions should be idempotent (safe to run twice) when possible:
+
+- Use "add if not present" instead of "append"
+- Check if file exists before creating
+- Use grep to verify before adding lines
+
+This prevents duplicate changes if a phase is interrupted and restarted.
+
+---
+
 ## Risk Levels
 
 Tag phases by risk in the audit:
