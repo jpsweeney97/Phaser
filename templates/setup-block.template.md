@@ -75,6 +75,7 @@ Parse this block and perform the following steps:
 3. CREATE FILES:
    - For each ===FILE: {path}=== section below, create the file at that path
    - Write all content between ===FILE: {path}=== and ===END FILE=== to that file
+   - After creating CONTEXT.md, set "Last Activity" in Metadata to current timestamp
 
 4. VALIDATE METADATA:
    - Read project_name and audit_slug from .audit/CONTEXT.md

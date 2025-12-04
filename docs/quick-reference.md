@@ -67,6 +67,14 @@ All commands are case-insensitive.
 | `show report` | Same as show full audit |
 | `show current` | Same as show full audit |
 
+### Archive Incomplete
+
+| Say This | Effect |
+|----------|--------|
+| `archive incomplete` | Save current state and close audit |
+| `save and close` | Same as archive incomplete |
+| `archive as is` | Same as archive incomplete |
+
 **Not recognized:** Free-form requests like "what's next" or "can you run phase 3" — use the exact phrases above.
 
 ---
@@ -187,6 +195,20 @@ When the last phase finishes, Claude Code automatically:
 | Want to start over | Say "abandon", then re-run setup block |
 | Archive didn't happen | Check `~/Documents/Audits/` manually |
 | Tag already exists | Claude Code appends -2, -3, etc. |
+
+---
+
+## Stale Audit Detection
+
+If you haven't touched an audit in 7+ days, Claude Code will ask what to do:
+
+| Say | Result |
+|-----|--------|
+| `resume` | Continue the audit normally |
+| `archive incomplete` | Save progress, close audit |
+| `abandon` | Delete without saving |
+
+To prevent this prompt, either complete audits promptly or explicitly abandon them when you're done.
 
 ---
 

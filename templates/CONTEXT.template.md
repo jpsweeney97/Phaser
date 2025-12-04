@@ -21,10 +21,13 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 | Version      | 1               |
 | Test Command | {test_command}  |
 | Archive Dir  | {archive_dir or "auto"} |
+| Last Activity | {YYYY-MM-DD HH:MM} |
 
 > **Note:** Default test_command is `make test`. Set appropriately for your project (`npm test`, `pytest`, `xcodebuild test`, `cargo test`, etc.).
 
 > **Note:** Default archive location is `~/Documents/Audits/` (macOS) or `~/.local/share/phaser/audits/` (Linux). Override with `PHASER_ARCHIVE_DIR` environment variable.
+
+> **Note:** Claude Code updates "Last Activity" after every phase execution, skip, or status check.
 
 ---
 
@@ -114,11 +117,35 @@ Recognize these exact phrases (case-insensitive):
 - "show report"
 - "show current"
 
+### Archive Incomplete
+
+- "archive incomplete"
+- "save and close"
+- "archive as is"
+
+Action: Archive current state to {date}-{slug}-INCOMPLETE.md and delete .audit/
+
 **Not recognized:** Free-form requests like "what's next", "do the next thing", or "can you run phase 3" — use the exact phrases above.
 
 ---
 
 ## Automation Rules
+
+### 0. Stale Audit Check
+
+When first reading this file in a session:
+
+1. Parse "Last Activity" from Metadata
+2. Calculate days since last activity
+3. If 7+ days have passed:
+   - Warn: "This audit has been inactive for N days."
+   - Show last completed phase and remaining phases
+   - Offer options:
+     - "Say 'resume' to continue where you left off"
+     - "Say 'archive incomplete' to save current state and close"
+     - "Say 'abandon' to delete without saving"
+   - Wait for user response before proceeding
+4. If less than 7 days: proceed normally
 
 ### 1. Phase Execution
 
@@ -136,6 +163,7 @@ When executing a phase:
 10. Only mark [x] after ALL verifications pass
 11. On success:
     - Update this file: change [IN PROGRESS] to [x] for that phase
+    - Update Metadata: set "Last Activity" to current timestamp
     - Report: "Phase N complete: {description}"
     - Check if all phases are now complete/skipped (trigger Rule 5 if yes)
 12. On failure:
@@ -162,8 +190,9 @@ When user requests skip:
 1. If "skip" with no number: skip the next incomplete phase
 2. If "skip phase N": skip phase N specifically
 3. Update this file: change [ ] to [SKIPPED]
-4. Report: "Phase N skipped: {description}"
-5. Check if all phases are now complete/skipped (trigger Rule 5 if yes)
+4. Update Metadata: set "Last Activity" to current timestamp
+5. Report: "Phase N skipped: {description}"
+6. Check if all phases are now complete/skipped (trigger Rule 5 if yes)
 
 ### 3. Phase Redo
 
@@ -179,6 +208,7 @@ When user requests status:
 
 1. Display the Phase Status section from this file
 2. Summarize: "N complete, M skipped, P remaining"
+3. Update Metadata: set "Last Activity" to current timestamp
 
 ### 5. Completion & Auto-Archive
 
