@@ -2,6 +2,30 @@
 
 All notable changes to Phaser will be documented in this file.
 
+## [1.5.0] - 2025-12-05
+
+### Added
+
+- **Reverse Audit** (`phaser reverse`)
+  - `phaser reverse generate <commit-range>` — Generate audit document from git diff
+  - `phaser reverse preview <commit-range>` — Preview inferred phases
+  - `phaser reverse commits <commit-range>` — List commits with details
+  - `phaser reverse diff <commit-range>` — Show full diff
+  - Multiple grouping strategies: commits, directories, filetypes, semantic
+  - Output formats: markdown, yaml, json
+  - Automatic phase title and category inference
+  - Support for conventional commit parsing
+
+- **Specifications**
+  - `specs/reverse.md` — Reverse Audit feature specification
+
+### Changed
+
+- Version bumped to 1.5.0
+- Updated `phaser version` output to list Reverse Audit feature
+
+---
+
 ## [1.2.0] - 2025-12-05
 
 ### Added
