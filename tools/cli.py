@@ -23,11 +23,12 @@ import click
 from tools.branches import cli as branches_cli
 from tools.contracts import cli as contracts_cli
 from tools.diff import cli as diff_cli
+from tools.replay import cli as replay_cli
 from tools.simulate import cli as simulate_cli
 
 
 @click.group()
-@click.version_option(version="1.2.0", prog_name="phaser")
+@click.version_option(version="1.4.0", prog_name="phaser")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress non-essential output")
 @click.pass_context
@@ -43,6 +44,7 @@ cli.add_command(diff_cli, name="diff")
 cli.add_command(contracts_cli, name="contracts")
 cli.add_command(simulate_cli, name="simulate")
 cli.add_command(branches_cli, name="branches")
+cli.add_command(replay_cli, name="replay")
 
 
 @cli.command()
@@ -112,7 +114,7 @@ def manifest(root: str, output: str | None, output_format: str) -> None:
 @cli.command()
 def version() -> None:
     """Show version and feature information."""
-    click.echo("Phaser v1.2.0")
+    click.echo("Phaser v1.4.0")
     click.echo()
     click.echo("Features:")
     click.echo("  * Storage & Events (Learning Loop)")
@@ -120,13 +122,13 @@ def version() -> None:
     click.echo("  * Audit Contracts")
     click.echo("  * Simulation")
     click.echo("  * Branch-per-phase")
+    click.echo("  * CI Integration")
+    click.echo("  * Insights & Analytics")
+    click.echo("  * Audit Replay")
     click.echo()
     click.echo("Batch 2 (coming soon):")
-    click.echo("  - Audit Replay")
-    click.echo("  - CI Check Integration")
-    click.echo("  - Phase Negotiation")
     click.echo("  - Reverse Audit")
-    click.echo("  - Cross-project Insights")
+    click.echo("  - Phase Negotiation")
 
 
 @cli.command()
