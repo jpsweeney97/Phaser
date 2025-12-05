@@ -133,6 +133,24 @@ Action: Archive current state to {date}-{slug}-INCOMPLETE.md and delete .audit/
 
 Action: Display diff summary from pre/post manifests (if available)
 
+### Simulate Audit
+
+- "simulate"
+- "dry-run"
+- "preview"
+- "simulate all"
+
+Action: Run all remaining phases in simulation mode, then rollback.
+Shows what would change without committing.
+
+### Simulate Phase
+
+- "simulate phase N"
+- "dry-run phase N"
+- "preview phase N"
+
+Action: Simulate specific phase only, then rollback.
+
 **Not recognized:** Free-form requests like "what's next", "do the next thing", or "can you run phase 3" — use the exact phrases above.
 
 ---
@@ -215,8 +233,9 @@ When user requests redo:
 When user requests status:
 
 1. Display the Phase Status section from this file
-2. Summarize: "N complete, M skipped, P remaining"
-3. Update Metadata: set "Last Activity" to current timestamp
+2. If active simulation: show "[SIMULATION MODE]" warning
+3. Summarize: "N complete, M skipped, P remaining"
+4. Update Metadata: set "Last Activity" to current timestamp
 
 ### 5. Completion & Auto-Archive
 
@@ -299,7 +318,33 @@ When user requests abandon:
 2. Do NOT archive anything
 3. Report: "Audit abandoned. Removed .audit/ folder."
 
-### 7. Error Handling
+### 7. Simulation Mode
+
+When user requests simulation ("simulate", "dry-run", "preview"):
+
+1. Verify no active simulation exists
+2. Stash any uncommitted changes (will be restored after)
+3. Execute phases in sandbox:
+   - Track all files created
+   - Track all files modified
+   - Track all files deleted
+4. After all phases complete (or first failure if fail_fast):
+   - Capture diff summary
+   - Rollback all changes
+   - Restore stashed changes
+5. Report:
+   - "Simulation complete"
+   - "Phases: N passed, M failed"
+   - "Would create X files, modify Y files, delete Z files"
+   - "First failure: Phase P" (if any)
+   - "To apply these changes for real, say 'next'"
+
+If "simulate phase N": only simulate that specific phase.
+
+**Recovery:** If simulation is interrupted, context is saved to .phaser/simulation.yaml.
+On next run, offer: "resume", "rollback", or "abandon".
+
+### 8. Error Handling
 
 | Situation                       | Response                                                        |
 | ------------------------------- | --------------------------------------------------------------- |
