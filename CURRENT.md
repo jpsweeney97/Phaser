@@ -5,13 +5,13 @@
 ## Phases
 
 - [x] Phase 36: Reverse Audit Specification
-- [ ] Phase 37: Git Diff Parsing
+- [x] Phase 37: Git Diff Parsing
 - [ ] Phase 38: Audit Document Generation
 - [ ] Phase 39: Reverse CLI Commands
 - [ ] Phase 40: CLI Integration
 - [ ] Phase 41: Tests and Documentation
 
-## Current Phase: 37
+## Current Phase: 38
 
 ## Notes
 
