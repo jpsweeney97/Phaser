@@ -12,3 +12,4 @@
 
 # Phaser audit workspace
 .audit/
+*.egg-info/
