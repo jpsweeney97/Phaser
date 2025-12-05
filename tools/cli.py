@@ -9,6 +9,8 @@ Commands:
     contracts   Rule extraction and checking
     simulate    Dry-run audit execution
     branches    Branch-per-phase management
+    ci          CI integration commands
+    insights    Analytics and statistics
     check       Run all contract checks (CI integration)
     version     Show version information
 """
@@ -21,13 +23,15 @@ from pathlib import Path
 import click
 
 from tools.branches import cli as branches_cli
+from tools.ci import cli as ci_cli
 from tools.contracts import cli as contracts_cli
 from tools.diff import cli as diff_cli
+from tools.insights import cli as insights_cli
 from tools.simulate import cli as simulate_cli
 
 
 @click.group()
-@click.version_option(version="1.2.0", prog_name="phaser")
+@click.version_option(version="1.3.0", prog_name="phaser")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress non-essential output")
 @click.pass_context
@@ -43,6 +47,8 @@ cli.add_command(diff_cli, name="diff")
 cli.add_command(contracts_cli, name="contracts")
 cli.add_command(simulate_cli, name="simulate")
 cli.add_command(branches_cli, name="branches")
+cli.add_command(ci_cli, name="ci")
+cli.add_command(insights_cli, name="insights")
 
 
 @cli.command()
@@ -112,7 +118,7 @@ def manifest(root: str, output: str | None, output_format: str) -> None:
 @cli.command()
 def version() -> None:
     """Show version and feature information."""
-    click.echo("Phaser v1.2.0")
+    click.echo("Phaser v1.3.0")
     click.echo()
     click.echo("Features:")
     click.echo("  * Storage & Events (Learning Loop)")
@@ -120,13 +126,13 @@ def version() -> None:
     click.echo("  * Audit Contracts")
     click.echo("  * Simulation")
     click.echo("  * Branch-per-phase")
+    click.echo("  * CI Integration")
+    click.echo("  * Insights & Analytics")
     click.echo()
     click.echo("Batch 2 (coming soon):")
     click.echo("  - Audit Replay")
-    click.echo("  - CI Check Integration")
-    click.echo("  - Phase Negotiation")
     click.echo("  - Reverse Audit")
-    click.echo("  - Cross-project Insights")
+    click.echo("  - Phase Negotiation")
 
 
 @cli.command()

@@ -8,10 +8,10 @@
 - [x] Phase 25: CI Check Implementation
 - [x] Phase 26: Insights Specification
 - [x] Phase 27: Insights Implementation
-- [ ] Phase 28: CLI Integration
+- [x] Phase 28: CLI Integration
 - [ ] Phase 29: Tests and Documentation
 
-## Current Phase: 28
+## Current Phase: 29
 
 ## Notes
 
