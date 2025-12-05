@@ -1222,18 +1222,40 @@ def format_preview(
 import click
 
 
-@click.group()
+class DefaultToGenerateGroup(click.Group):
+    """Custom Click group that routes unknown subcommands to 'generate'.
+    
+    This allows:
+    - `phaser reverse HEAD~5..HEAD` → routes to generate command
+    - `phaser reverse preview HEAD~5..HEAD` → routes to preview command
+    - `phaser reverse generate HEAD~5..HEAD` → explicit generate command
+    """
+    
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        """Route unknown subcommands to generate."""
+        # If we have args and the first arg is not a known command,
+        # prepend 'generate' to treat it as the commit_range argument
+        if args and args[0] not in self.commands and not args[0].startswith("-"):
+            args = ["generate"] + list(args)
+        return super().parse_args(ctx, args)
+
+
+@click.group(cls=DefaultToGenerateGroup)
 def cli() -> None:
     """
     Reverse Audit — Generate audit documents from git diffs.
 
-    Commands:
+    \b
+    Usage:
+        phaser reverse <commit-range> [OPTIONS]
+        phaser reverse preview <commit-range>
+        phaser reverse commits <commit-range>
 
-        phaser reverse generate HEAD~5..HEAD
-
-        phaser reverse preview HEAD~5..HEAD
-
-        phaser reverse commits HEAD~5..HEAD
+    \b
+    Examples:
+        phaser reverse HEAD~5..HEAD
+        phaser reverse main..feature --output audit.md
+        phaser reverse HEAD~10..HEAD --strategy directories
     """
     pass
 
