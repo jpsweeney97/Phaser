@@ -2,6 +2,32 @@
 
 All notable changes to Phaser will be documented in this file.
 
+## [1.4.0] - 2025-12-05
+
+### Added
+
+#### Audit Replay
+
+- `phaser replay run <slug>` — Replay an audit to detect regressions
+- `phaser replay list` — List audits available for replay
+- `phaser replay show <slug>` — Show audit details for replay
+- Detects contract violations that have reappeared
+- Detects file regressions (deleted files reappearing, created files missing)
+- `--fail-on-regression` flag for CI integration
+- `--scope` flag to check only contracts or files
+- Replay history stored in `.phaser/replays.json`
+
+#### Specifications
+
+- `specs/replay.md` — Replay feature specification
+
+### Changed
+
+- Version bumped to 1.4.0
+- Updated `phaser version` output to list Replay feature
+
+---
+
 ## [1.2.0] - 2025-12-05
 
 ### Added
