@@ -29,6 +29,7 @@ from tools.ci import cli as ci_cli
 from tools.contracts import cli as contracts_cli
 from tools.diff import cli as diff_cli
 from tools.insights import cli as insights_cli
+from tools.replay import cli as replay_cli
 from tools.negotiate import cli as negotiate_cli
 from tools.reverse import cli as reverse_cli
 from tools.simulate import cli as simulate_cli
@@ -53,6 +54,7 @@ cli.add_command(simulate_cli, name="simulate")
 cli.add_command(branches_cli, name="branches")
 cli.add_command(ci_cli, name="ci")
 cli.add_command(insights_cli, name="insights")
+cli.add_command(replay_cli, name="replay")
 cli.add_command(reverse_cli, name="reverse")
 cli.add_command(negotiate_cli, name="negotiate")
 
