@@ -9,6 +9,10 @@ Commands:
     contracts   Rule extraction and checking
     simulate    Dry-run audit execution
     branches    Branch-per-phase management
+    ci          CI integration commands
+    insights    Analytics and statistics
+    reverse     Generate audit from git history
+    negotiate   Customize phases before execution
     check       Run all contract checks (CI integration)
     version     Show version information
 """
@@ -21,8 +25,10 @@ from pathlib import Path
 import click
 
 from tools.branches import cli as branches_cli
+from tools.ci import cli as ci_cli
 from tools.contracts import cli as contracts_cli
 from tools.diff import cli as diff_cli
+from tools.insights import cli as insights_cli
 from tools.negotiate import cli as negotiate_cli
 from tools.reverse import cli as reverse_cli
 from tools.simulate import cli as simulate_cli
@@ -45,6 +51,8 @@ cli.add_command(diff_cli, name="diff")
 cli.add_command(contracts_cli, name="contracts")
 cli.add_command(simulate_cli, name="simulate")
 cli.add_command(branches_cli, name="branches")
+cli.add_command(ci_cli, name="ci")
+cli.add_command(insights_cli, name="insights")
 cli.add_command(reverse_cli, name="reverse")
 cli.add_command(negotiate_cli, name="negotiate")
 
@@ -80,7 +88,6 @@ def check(ctx: click.Context, root: str, fail_on_error: bool, output_format: str
     if fail_on_error and any(not r.passed for r in results):
         raise SystemExit(1)
 
-
 @cli.command()
 @click.argument("root", type=click.Path(exists=True), default=".")
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
@@ -112,7 +119,6 @@ def manifest(root: str, output: str | None, output_format: str) -> None:
     else:
         click.echo(content)
 
-
 @cli.command()
 def version() -> None:
     """Show version and feature information."""
@@ -126,10 +132,8 @@ def version() -> None:
     click.echo("  * Branch-per-phase")
     click.echo("  * CI Integration")
     click.echo("  * Insights & Analytics")
-    click.echo("  * Audit Replay")
     click.echo("  * Reverse Audit")
     click.echo("  * Phase Negotiation")
-
 
 @cli.command()
 @click.option("--global", "global_", is_flag=True, help="Show global .phaser/ location")
@@ -155,7 +159,6 @@ def info(global_: bool, project: bool) -> None:
 def main() -> None:
     """Entry point for the phaser command."""
     cli(obj={})
-
 
 if __name__ == "__main__":
     main()

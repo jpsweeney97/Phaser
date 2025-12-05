@@ -6,37 +6,58 @@ All notable changes to Phaser will be documented in this file.
 
 ### Added
 
-- **Reverse Audit** (`phaser reverse`)
-  - `phaser reverse generate <commit-range>` — Generate audit document from git diff
-  - `phaser reverse preview <commit-range>` — Preview inferred phases
-  - `phaser reverse commits <commit-range>` — List commits with details
-  - `phaser reverse diff <commit-range>` — Show full diff
-  - Multiple grouping strategies: commits, directories, filetypes, semantic
-  - Output formats: markdown, yaml, json
-  - Automatic phase title and category inference
-  - Support for conventional commit parsing
+#### CI Integration (`phaser ci`)
 
-- **Phase Negotiation** (`phaser negotiate`)
-  - `phaser negotiate <audit-file>` — Interactive phase customization
-  - `phaser negotiate preview <audit-file>` — Preview phases in audit
-  - `phaser negotiate skip <audit-file> --phases N,M` — Quick skip phases
-  - `phaser negotiate apply <audit-file> --ops <file.yaml>` — Batch apply operations
-  - `phaser negotiate export <audit-file>` — Export negotiated audit
-  - `phaser negotiate status <audit-file>` — Show session status
-  - Operations: split, merge, reorder, skip, modify, reset
-  - Session persistence with resume capability
-  - Non-consecutive merge warning
-  - Tracks operation history for review
-  - Produces clean negotiated audit documents
+- `phaser ci init` — Generate GitHub Actions workflow for contract checking
+- `phaser ci status` — Show CI configuration status
+- `phaser ci remove` — Remove CI workflow file
+- Supports customizable Python version, triggers, and branches
+- Dry-run mode for previewing workflow
 
-- **Specifications**
-  - `specs/reverse.md` — Reverse Audit feature specification
-  - `specs/negotiate.md` — Phase Negotiation feature specification
+#### Insights & Analytics (`phaser insights`)
+
+- `phaser insights summary` — High-level audit statistics
+- `phaser insights audits` — List audits with phase counts and duration
+- `phaser insights contracts` — Contract violation statistics
+- `phaser insights files` — File change hotspots
+- `phaser insights events` — Event type statistics
+- `phaser insights trends` — Trends over time (daily/weekly/monthly)
+- Supports `--global` flag for cross-project analytics
+- Flexible date filtering with relative formats (7d, 4w, 3m)
+
+#### Reverse Audit (`phaser reverse`)
+
+- `phaser reverse generate <commit-range>` — Generate audit document from git diff
+- `phaser reverse preview <commit-range>` — Preview inferred phases
+- `phaser reverse commits <commit-range>` — List commits with details
+- `phaser reverse diff <commit-range>` — Show full diff
+- Multiple grouping strategies: commits, directories, filetypes, semantic
+- Output formats: markdown, yaml, json
+- Automatic phase title and category inference
+- Support for conventional commit parsing
+
+#### Phase Negotiation (`phaser negotiate`)
+
+- `phaser negotiate <audit-file>` — Interactive phase customization
+- `phaser negotiate preview <audit-file>` — Preview phases in audit
+- `phaser negotiate skip <audit-file> --phases N,M` — Quick skip phases
+- `phaser negotiate apply <audit-file> --ops <file.yaml>` — Batch apply operations
+- `phaser negotiate export <audit-file>` — Export negotiated audit
+- `phaser negotiate status <audit-file>` — Show session status
+- Operations: split, merge, reorder, skip, modify, reset
+- Session persistence with resume capability
+
+#### Specifications
+
+- `specs/ci.md` — CI Check feature specification
+- `specs/insights.md` — Insights feature specification
+- `specs/reverse.md` — Reverse Audit feature specification
+- `specs/negotiate.md` — Phase Negotiation feature specification
 
 ### Changed
 
 - Version bumped to 1.5.0
-- Updated `phaser version` output to list Reverse Audit and Phase Negotiation features
+- Updated `phaser version` output to list all new features
 
 ---
 

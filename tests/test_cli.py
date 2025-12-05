@@ -28,11 +28,13 @@ class TestCLIBasics:
         result = runner.invoke(cli, ["version"])
         assert result.exit_code == 0
         assert "1.5.0" in result.output
+        assert "1.5.0" in result.output
 
     def test_cli_version_option(self, runner: CliRunner) -> None:
         """CLI --version option shows version."""
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
+        assert "1.5.0" in result.output
         assert "1.5.0" in result.output
 
     def test_cli_verbose_flag(self, runner: CliRunner) -> None:
