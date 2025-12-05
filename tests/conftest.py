@@ -34,3 +34,19 @@ def emitter(storage: PhaserStorage) -> EventEmitter:
 def emitter_no_storage() -> EventEmitter:
     """Create an EventEmitter without storage (in-memory only)."""
     return EventEmitter(storage=None)
+
+
+@pytest.fixture
+def sample_project(temp_dir: Path) -> Path:
+    """Create a sample project structure for testing."""
+    (temp_dir / "src").mkdir()
+    (temp_dir / "src" / "main.py").write_text("print('hello')")
+    (temp_dir / "README.md").write_text("# Test Project")
+    return temp_dir
+
+
+@pytest.fixture
+def sample_manifest(sample_project: Path):
+    """Capture manifest of sample project."""
+    from tools.diff import capture_manifest
+    return capture_manifest(sample_project)

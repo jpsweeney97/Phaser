@@ -114,6 +114,7 @@ Total estimated effort: {X hours} across {N} phases
 | Total Size | {size} |
 | Test Count | {count} |
 | Phases | {count} |
+| Post-Audit Manifest | Generated on completion |
 ```
 
 ---

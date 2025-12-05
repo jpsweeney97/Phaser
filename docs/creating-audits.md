@@ -175,6 +175,7 @@ Before delivering:
 - [ ] Each phase has ## Verify section with executable checks
 - [ ] Verify commands cover all acceptance criteria
 - [ ] Verify commands are idempotent
+- [ ] Setup block includes .audit/tools/serialize.py for post-audit validation
 
 ---
 

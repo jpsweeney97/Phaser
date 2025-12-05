@@ -125,6 +125,14 @@ Recognize these exact phrases (case-insensitive):
 
 Action: Archive current state to {date}-{slug}-INCOMPLETE.md and delete .audit/
 
+### Show Diff
+
+- "show diff"
+- "audit diff"
+- "what changed"
+
+Action: Display diff summary from pre/post manifests (if available)
+
 **Not recognized:** Free-form requests like "what's next", "do the next thing", or "can you run phase 3" — use the exact phrases above.
 
 ---
@@ -246,22 +254,42 @@ Triggered when all phases are [x] or [SKIPPED]:
    - If rename fails: report error, leave .audit/ intact, STOP
    - Verify: final_path exists
 
+4a. Generate diff report (if tools/diff.py exists):
+
+   - Load pre-audit manifest from .phaser/manifests/{audit_id}-pre.yaml
+   - Capture post-audit manifest
+   - Compare and generate diff summary
+   - Include diff summary in completion report
+
 5. Create git tag:
 
    - Execute: git tag audit/{date}-{audit_slug}
    - If tag exists, append -2, -3, etc.
 
-6. Only after successful archive and tag:
+6. Generate post-audit manifest:
+
+   - Set manifest_dir = {archive_base}/{project_name}/manifests/
+   - Create manifest_dir if it doesn't exist
+   - Set manifest_path = {manifest_dir}/{date}-{audit_slug}-post.yaml
+   - If .audit/tools/serialize.py exists:
+     - Run: python .audit/tools/serialize.py --root . --output {manifest_path} --quiet
+     - If successful: record manifest_path for report
+     - If failed: warn "Post-audit manifest generation failed: {error}" and continue
+   - If serializer not found: note "Post-audit manifest skipped (serializer not found)"
+
+7. Only after successful archive and tag:
 
    - Delete .audit/ folder entirely
 
-7. Report summary:
+8. Report summary:
    - "Audit complete."
    - "Phases: N completed, M skipped"
    - "Commits made: (list recent commits from this audit)"
    - "Tag created: audit/{date}-{audit_slug}"
    - "Archived to: {full_path}"
+   - If manifest was generated: "Post-audit manifest: {manifest_path}"
    - "To push tag: git push --tags"
+   - If manifest was generated: "To validate: Upload manifest to claude.ai with original audit goals"
 
 ### 6. Abandon
 

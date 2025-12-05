@@ -2,6 +2,10 @@
 
 This is the format for delivering audits to users. Claude Code parses this to create the `.audit/` folder.
 
+> **Note:** Setup blocks should include `.audit/tools/serialize.py` to enable
+> automatic post-audit manifest generation. Copy the serializer from
+> `Phaser/tools/serialize.py` into your setup block.
+
 ---
 
 ## Structure
@@ -30,6 +34,10 @@ SETUP INSTRUCTIONS FOR CLAUDE CODE:
 
 ===FILE: .audit/CURRENT.md===
 {Content of full audit report}
+===END FILE===
+
+===FILE: .audit/tools/serialize.py===
+{Copy full content from Phaser/tools/serialize.py}
 ===END FILE===
 
 === AUDIT SETUP END ===
@@ -71,11 +79,18 @@ Parse this block and perform the following steps:
 2. CREATE DIRECTORY STRUCTURE:
    - Create .audit/
    - Create .audit/phases/
+   - Create .audit/tools/
 
 3. CREATE FILES:
    - For each ===FILE: {path}=== section below, create the file at that path
    - Write all content between ===FILE: {path}=== and ===END FILE=== to that file
    - After creating CONTEXT.md, set "Last Activity" in Metadata to current timestamp
+   - Verify .audit/tools/serialize.py was created (required for post-audit manifest)
+
+3a. CAPTURE PRE-AUDIT MANIFEST (if tools/diff.py exists):
+   - Run: python -m tools.diff capture . -o .phaser/manifests/{audit_id}-pre.yaml
+   - If tools/diff.py not available, skip (backward compatibility)
+   - This enables "show diff" command after audit completion
 
 4. VALIDATE METADATA:
    - Read project_name and audit_slug from .audit/CONTEXT.md

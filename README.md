@@ -109,6 +109,22 @@ git push --tags
 
 ---
 
+## Post-Audit Validation
+
+After an audit completes, validate that all changes were applied correctly:
+
+1. Audit completion generates a manifest at:
+   `~/Documents/Audits/{project}/manifests/{date}-{slug}-post.yaml`
+
+2. Use the validation prompt template:
+   `templates/validation-prompt.template.md`
+
+3. Submit to claude.ai with your audit goals and manifest
+
+See `docs/post-audit-validation.md` for detailed instructions.
+
+---
+
 ## File Structure
 
 When an audit is active:
