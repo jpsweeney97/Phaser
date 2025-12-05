@@ -16,13 +16,27 @@ All notable changes to Phaser will be documented in this file.
   - Automatic phase title and category inference
   - Support for conventional commit parsing
 
+- **Phase Negotiation** (`phaser negotiate`)
+  - `phaser negotiate <audit-file>` — Interactive phase customization
+  - `phaser negotiate preview <audit-file>` — Preview phases in audit
+  - `phaser negotiate skip <audit-file> --phases N,M` — Quick skip phases
+  - `phaser negotiate apply <audit-file> --ops <file.yaml>` — Batch apply operations
+  - `phaser negotiate export <audit-file>` — Export negotiated audit
+  - `phaser negotiate status <audit-file>` — Show session status
+  - Operations: split, merge, reorder, skip, modify, reset
+  - Session persistence with resume capability
+  - Non-consecutive merge warning
+  - Tracks operation history for review
+  - Produces clean negotiated audit documents
+
 - **Specifications**
   - `specs/reverse.md` — Reverse Audit feature specification
+  - `specs/negotiate.md` — Phase Negotiation feature specification
 
 ### Changed
 
 - Version bumped to 1.5.0
-- Updated `phaser version` output to list Reverse Audit feature
+- Updated `phaser version` output to list Reverse Audit and Phase Negotiation features
 
 ---
 

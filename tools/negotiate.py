@@ -1150,32 +1150,30 @@ def generate_negotiated_audit(state: NegotiationState, include_skipped: bool = F
 import click
 
 
-@click.group(invoke_without_command=True)
-@click.argument('audit_file', required=False, type=click.Path(exists=True))
-@click.option('--output', '-o', type=click.Path(), help='Output file for negotiated audit')
-@click.pass_context
-def cli(ctx: click.Context, audit_file: Optional[str], output: Optional[str]) -> None:
+@click.group()
+def cli() -> None:
     """
     Negotiate audit phases before execution.
 
-    Opens an interactive session to customize phases via split, merge,
-    reorder, skip, and modify operations.
+    Customize phases via split, merge, reorder, skip, and modify operations.
 
     Examples:
 
-        phaser negotiate audit.md
+        phaser negotiate interactive audit.md
 
         phaser negotiate preview audit.md
 
         phaser negotiate skip audit.md --phases 5,8,12
     """
-    ctx.ensure_object(dict)
-    ctx.obj['audit_file'] = audit_file
-    ctx.obj['output'] = output
+    pass
 
-    if ctx.invoked_subcommand is None and audit_file:
-        # Start interactive session
-        run_interactive_session(audit_file, output)
+
+@cli.command('interactive')
+@click.argument('audit_file', type=click.Path(exists=True))
+@click.option('--output', '-o', type=click.Path(), help='Output file for negotiated audit')
+def interactive_session(audit_file: str, output: Optional[str]) -> None:
+    """Start interactive negotiation session."""
+    run_interactive_session(audit_file, output)
 
 
 def run_interactive_session(audit_file: str, output: Optional[str] = None) -> None:
