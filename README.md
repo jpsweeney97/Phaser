@@ -4,14 +4,17 @@ Audit automation for Claude Code.
 
 ---
 
-## What's New in v1.2
+## What's New in v1.5
 
-- **Learning Loop:** Persistent storage in `.phaser/` for audit history and events
-- **Audit Diffs:** See exactly what changed during each phase
-- **Audit Contracts:** Extract and enforce quality rules from audit findings
+- **Reverse Audit:** Generate audit documents from existing git history
+- **Phase Negotiation:** Customize phases before execution (split, merge, reorder, skip)
+- **Replay:** Re-run past audits to detect regressions
+- **CI Integration:** GitHub Actions workflow generation for contract checking
+- **Insights & Analytics:** Statistics and trends from audit history
 - **Simulation:** Preview changes before committing with automatic rollback
 - **Branch-per-phase:** Create reviewable git branches for each phase
-- **Unified CLI:** Single `phaser` command for all operations
+- **Audit Contracts:** Extract and enforce quality rules from audit findings
+- **Manifest Diffing:** See exactly what changed during each phase
 
 ---
 
@@ -34,7 +37,7 @@ Add the Phaser trigger to your global Claude Code config:
 grep -q "AUDIT-SYSTEM" ~/.claude/CLAUDE.md 2>/dev/null || cat global-claude-snippet.md >> ~/.claude/CLAUDE.md
 ```
 
-This command is idempotent—safe to run multiple times without creating duplicates.
+This command is idempotent — safe to run multiple times without creating duplicates.
 
 Or manually copy the content from `global-claude-snippet.md` into your `~/.claude/CLAUDE.md` file's "Project-Specific Context" section.
 
@@ -81,6 +84,7 @@ claude --dangerously-skip-permissions
 ```
 
 Then paste:
+
 ```
 Set up this audit:
 [paste the setup block]
@@ -93,6 +97,7 @@ next
 ```
 
 Repeat until done. Claude Code handles everything:
+
 - Executes each phase
 - Runs tests
 - Marks progress
@@ -109,14 +114,14 @@ git push --tags
 
 ## Commands
 
-| Say | Does |
-|-----|------|
-| `next` | Run next phase |
-| `skip` | Skip current phase |
-| `skip phase 3` | Skip specific phase |
-| `redo 2` | Re-run phase 2 |
-| `status` | Show progress |
-| `abandon` | Delete audit without saving |
+| Say            | Does                        |
+| -------------- | --------------------------- |
+| `next`         | Run next phase              |
+| `skip`         | Skip current phase          |
+| `skip phase 3` | Skip specific phase         |
+| `redo 2`       | Re-run phase 2              |
+| `status`       | Show progress               |
+| `abandon`      | Delete audit without saving |
 
 ---
 
@@ -174,7 +179,10 @@ Phaser/
 ├── CLAUDE.md                 ← Context for Claude Code
 ├── README.md                 ← This file
 ├── global-claude-snippet.md  ← Add to ~/.claude/CLAUDE.md
-├── templates/                ← For generating new audits
+├── specs/                    ← Feature specifications
+├── tools/                    ← CLI modules
+├── tests/                    ← Test suite (391 tests)
+├── templates/                ← Audit templates
 ├── examples/                 ← Sample audits
 └── docs/                     ← Additional documentation
 ```
@@ -183,12 +191,12 @@ Phaser/
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| "No active audit found" | Paste the setup block first |
-| Claude Code ignores "next" | Restart Claude Code, try again |
-| Phase fails repeatedly | Say `skip`, or fix manually |
-| Tests require credentials | Check if audit includes mock/stub phases for auth services |
+| Problem                    | Solution                                                   |
+| -------------------------- | ---------------------------------------------------------- |
+| "No active audit found"    | Paste the setup block first                                |
+| Claude Code ignores "next" | Restart Claude Code, try again                             |
+| Phase fails repeatedly     | Say `skip`, or fix manually                                |
+| Tests require credentials  | Check if audit includes mock/stub phases for auth services |
 
 ---
 
@@ -200,34 +208,104 @@ See `examples/impromptu-setup-block.md` for a complete audit of a macOS SwiftUI 
 
 ## CLI Reference
 
-Phaser v1.2 provides a unified CLI for all operations:
+Phaser v1.5 provides a unified CLI for all operations:
 
 ```bash
-# Main commands
 phaser --help              # Show all commands
-phaser version             # Show version and feature info
-phaser check               # Run contract checks (CI integration)
-phaser manifest <dir>      # Capture directory manifest
-
-# Diff operations
-phaser diff capture <dir>  # Capture manifest to file
-phaser diff compare <a> <b> # Compare two manifests
-
-# Contract operations
-phaser contracts check     # Check all contracts
-phaser contracts list      # List all contracts
-
-# Simulation (dry-run)
-phaser simulate run        # Run audit in simulation mode
-phaser simulate status     # Show simulation status
-phaser simulate rollback   # Rollback simulated changes
-
-# Branch-per-phase
-phaser branches enable     # Enable branch mode
-phaser branches status     # Show branch status
-phaser branches merge      # Merge all phase branches
-phaser branches cleanup    # Delete merged branches
+phaser version             # Show version and features
 ```
+
+### Core Commands
+
+```bash
+phaser check               # Run all contract checks (CI integration)
+phaser manifest <dir>      # Capture directory manifest
+phaser info                # Show Phaser configuration
+```
+
+### Diff (Manifest Comparison)
+
+```bash
+phaser diff capture <dir>            # Capture manifest to file
+phaser diff compare <a> <b>          # Compare two manifests
+```
+
+### Contracts (Quality Rules)
+
+```bash
+phaser contracts list                # List all contracts
+phaser contracts check               # Check all contracts
+phaser contracts create              # Create a new contract
+phaser contracts enable <id>         # Enable a contract
+phaser contracts disable <id>        # Disable a contract
+```
+
+### Simulate (Dry-Run)
+
+```bash
+phaser simulate run                  # Run audit in simulation mode
+phaser simulate status               # Show simulation status
+phaser simulate commit               # Keep simulated changes
+phaser simulate rollback             # Rollback simulated changes
+```
+
+### Branches (Branch-per-Phase)
+
+```bash
+phaser branches enable               # Enable branch mode
+phaser branches status               # Show branch status
+phaser branches merge                # Merge all phase branches
+phaser branches cleanup              # Delete merged branches
+```
+
+### CI (Continuous Integration)
+
+```bash
+phaser ci init                       # Generate GitHub Actions workflow
+phaser ci status                     # Show CI configuration status
+phaser ci remove                     # Remove CI workflow file
+```
+
+### Insights (Analytics)
+
+```bash
+phaser insights summary              # High-level statistics
+phaser insights audits               # List audits with stats
+phaser insights contracts            # Contract violation stats
+phaser insights files                # File change hotspots
+phaser insights events               # Event statistics
+phaser insights trends               # Trends over time
+```
+
+### Replay (Regression Detection)
+
+```bash
+phaser replay list                   # List audits available for replay
+phaser replay show <id>              # Show audit details
+phaser replay run <id>               # Replay audit, check for regressions
+```
+
+### Reverse (Generate from Git)
+
+```bash
+phaser reverse generate <range>      # Generate audit from commits
+phaser reverse preview <range>       # Preview inferred phases
+phaser reverse commits <range>       # List commits in range
+phaser reverse diff <range>          # Show full diff
+```
+
+### Negotiate (Customize Phases)
+
+```bash
+phaser negotiate interactive <file>  # Interactive customization
+phaser negotiate preview <file>      # Preview phases
+phaser negotiate skip <file> -p 1,3  # Quick skip phases
+phaser negotiate apply <file> --ops ops.yaml  # Batch apply
+phaser negotiate export <file> -o out.md      # Export result
+phaser negotiate status <file>       # Session status
+```
+
+---
 
 ### CI Integration
 
@@ -239,6 +317,12 @@ Use `phaser check` in your CI pipeline to enforce contracts:
   run: phaser check --fail-on-error
 ```
 
+Or generate a complete workflow:
+
+```bash
+phaser ci init --python-version 3.12
+```
+
 ---
 
-*Phaser v1.2*
+*Phaser v1.5.0*
