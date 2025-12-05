@@ -4,6 +4,17 @@ Audit automation for Claude Code.
 
 ---
 
+## What's New in v1.2
+
+- **Learning Loop:** Persistent storage in `.phaser/` for audit history and events
+- **Audit Diffs:** See exactly what changed during each phase
+- **Audit Contracts:** Extract and enforce quality rules from audit findings
+- **Simulation:** Preview changes before committing with automatic rollback
+- **Branch-per-phase:** Create reviewable git branches for each phase
+- **Unified CLI:** Single `phaser` command for all operations
+
+---
+
 ## What Is Phaser?
 
 Phaser connects two Claude experiences:
@@ -187,4 +198,47 @@ See `examples/impromptu-setup-block.md` for a complete audit of a macOS SwiftUI 
 
 ---
 
-*Phaser v1.1*
+## CLI Reference
+
+Phaser v1.2 provides a unified CLI for all operations:
+
+```bash
+# Main commands
+phaser --help              # Show all commands
+phaser version             # Show version and feature info
+phaser check               # Run contract checks (CI integration)
+phaser manifest <dir>      # Capture directory manifest
+
+# Diff operations
+phaser diff capture <dir>  # Capture manifest to file
+phaser diff compare <a> <b> # Compare two manifests
+
+# Contract operations
+phaser contracts check     # Check all contracts
+phaser contracts list      # List all contracts
+
+# Simulation (dry-run)
+phaser simulate run        # Run audit in simulation mode
+phaser simulate status     # Show simulation status
+phaser simulate rollback   # Rollback simulated changes
+
+# Branch-per-phase
+phaser branches enable     # Enable branch mode
+phaser branches status     # Show branch status
+phaser branches merge      # Merge all phase branches
+phaser branches cleanup    # Delete merged branches
+```
+
+### CI Integration
+
+Use `phaser check` in your CI pipeline to enforce contracts:
+
+```yaml
+# GitHub Actions example
+- name: Check contracts
+  run: phaser check --fail-on-error
+```
+
+---
+
+*Phaser v1.2*

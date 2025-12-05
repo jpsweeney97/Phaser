@@ -179,4 +179,46 @@ Before delivering:
 
 ---
 
-*Phaser v1.1*
+## v1.2 Features
+
+### Audit Diffs
+
+Claude Code automatically captures manifests before and after each phase:
+- Pre-phase manifest: `~/.phaser/manifests/{audit}-pre.yaml`
+- Post-phase manifest: `~/.phaser/manifests/{audit}-post.yaml`
+
+Use `phaser diff compare` to see exactly what changed.
+
+### Extracting Contracts
+
+When a phase establishes a rule that should persist, add a Contract section:
+
+```markdown
+## Contract (Optional)
+
+rule_id: no-force-unwrap
+type: forbid_pattern
+pattern: '!\s*$'
+file_glob: '**/*.swift'
+message: 'Avoid force unwrapping optionals'
+```
+
+Claude Code can extract this as an enforceable contract on phase completion.
+
+### Simulation Mode
+
+Recommend simulation for risky audits:
+
+> Consider running this audit in simulation mode first:
+> Say `simulate` before `next` to preview changes without committing.
+
+### Branch Mode
+
+For team review workflows, recommend branch mode:
+
+> For team review, enable branch-per-phase:
+> Say `branch mode` before starting to create reviewable branches.
+
+---
+
+*Phaser v1.2*

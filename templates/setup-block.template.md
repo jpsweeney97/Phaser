@@ -87,7 +87,13 @@ Parse this block and perform the following steps:
    - After creating CONTEXT.md, set "Last Activity" in Metadata to current timestamp
    - Verify .audit/tools/serialize.py was created (required for post-audit manifest)
 
-3a. CAPTURE PRE-AUDIT MANIFEST (if tools/diff.py exists):
+3a. INITIALIZE PHASER STORAGE:
+   - Create .phaser/ directory if it doesn't exist
+   - Create .phaser/manifests/ subdirectory
+   - Add .phaser/ to .gitignore if not present
+   - This enables diff tracking, contracts, and event logging
+
+3b. CAPTURE PRE-AUDIT MANIFEST (if tools/diff.py exists):
    - Run: python -m tools.diff capture . -o .phaser/manifests/{audit_id}-pre.yaml
    - If tools/diff.py not available, skip (backward compatibility)
    - This enables "show diff" command after audit completion
@@ -110,8 +116,11 @@ Parse this block and perform the following steps:
 
 7. CONFIRM:
    - List all files created
+   - Note .phaser/ storage initialized
    - Note any modifications to .gitignore or ~/.claude/CLAUDE.md
+   - If Simulation or Branch Mode enabled in metadata, mention it
    - Say: "Audit ready. Say 'next' to begin Phase 1."
+   - Mention: "After completion, contracts will be extracted from phases with ## Contract sections."
 ```
 
 ---

@@ -122,6 +122,26 @@ Every phase file MUST contain these sections in order:
 | --------------- | ----------------------------------------- |
 | ## Note         | Special instructions or warnings for user |
 | ## Dependencies | Other phases that must complete first     |
+| ## Contract     | Extractable rule for ongoing enforcement  |
+
+### Contract Section (v1.2)
+
+If this phase establishes a rule that should be enforced going forward:
+
+```yaml
+## Contract
+
+rule_id: {descriptive-id}
+type: forbid_pattern | require_pattern | file_exists | file_not_exists | file_contains | file_not_contains
+pattern: '{regex pattern}'
+file_glob: '**/*.swift'
+message: '{Human-readable violation message}'
+severity: error | warning
+rationale: '{Why this rule matters}'
+```
+
+Claude Code can extract this as a contract on phase completion.
+Use `phaser contracts check` to verify compliance.
 
 ### Validation
 

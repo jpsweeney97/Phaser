@@ -18,10 +18,12 @@ Use this template when generating new audits. Replace all `{placeholders}`.
 | Project      | {project_name}  |
 | Audit        | {audit_slug}    |
 | Date         | {YYYY-MM-DD}    |
-| Version      | 1               |
+| Version      | 1.2             |
 | Test Command | {test_command}  |
 | Archive Dir  | {archive_dir or "auto"} |
 | Last Activity | {YYYY-MM-DD HH:MM} |
+| Simulation   | {enabled/disabled} |
+| Branch Mode  | {enabled/disabled} |
 
 > **Note:** Default test_command is `make test`. Set appropriately for your project (`npm test`, `pytest`, `xcodebuild test`, `cargo test`, etc.).
 
@@ -344,7 +346,29 @@ If "simulate phase N": only simulate that specific phase.
 **Recovery:** If simulation is interrupted, context is saved to .phaser/simulation.yaml.
 On next run, offer: "resume", "rollback", or "abandon".
 
-### 8. Error Handling
+### 8. Branch Mode
+
+When user enables branch mode ("branch mode", "enable branches"):
+
+1. Verify no active branch mode exists
+2. Record current branch as base
+3. For each phase:
+   - Create branch: `audit/{audit_slug}/phase-{NN}-{phase_slug}`
+   - Execute phase on that branch
+   - Commit changes with message: "Phase {N}: {description}"
+4. After all phases complete:
+   - Offer merge strategies: "squash", "rebase", or "merge"
+   - Default: squash all branches into base
+5. Cleanup: Delete phase branches after merge
+
+Branch naming: `audit/{audit_slug}/phase-01-{phase_slug}`
+
+**Commands:**
+- "branch status" — Show current branch state
+- "merge branches" — Merge all phase branches to base
+- "cleanup branches" — Delete merged branches
+
+### 9. Error Handling
 
 | Situation                       | Response                                                        |
 | ------------------------------- | --------------------------------------------------------------- |

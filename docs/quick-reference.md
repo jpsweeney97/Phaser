@@ -4,7 +4,26 @@ The audit automation system for Claude Code.
 
 ---
 
-## Commands
+## CLI Commands (v1.2)
+
+Phaser provides a unified `phaser` CLI:
+
+```bash
+phaser --help              # Show all commands
+phaser version             # Show version info
+phaser check               # Run contract checks (CI)
+phaser manifest <dir>      # Capture manifest
+
+# Subcommands
+phaser diff ...            # Manifest operations
+phaser contracts ...       # Contract operations
+phaser simulate ...        # Simulation mode
+phaser branches ...        # Branch-per-phase
+```
+
+---
+
+## Audit Commands
 
 All commands are case-insensitive.
 
@@ -75,6 +94,23 @@ All commands are case-insensitive.
 | `save and close` | Same as archive incomplete |
 | `archive as is` | Same as archive incomplete |
 
+### Simulation Mode (v1.2)
+
+| Say This | Effect |
+|----------|--------|
+| `simulate` | Run audit in simulation mode (dry-run) |
+| `simulate next` | Run next phase in simulation |
+| `simulate rollback` | Undo all simulated changes |
+| `simulate commit` | Keep simulated changes |
+
+### Branch Mode (v1.2)
+
+| Say This | Effect |
+|----------|--------|
+| `branch mode` | Enable branch-per-phase |
+| `branch status` | Show branch status |
+| `merge branches` | Merge all phase branches |
+
 **Not recognized:** Free-form requests like "what's next" or "can you run phase 3" — use the exact phrases above.
 
 ---
@@ -133,6 +169,10 @@ When the last phase finishes, Claude Code automatically:
 | Phase prompts | `{project}/.audit/phases/` |
 | Archives | `~/Documents/Audits/{project}/` (macOS) or `~/.local/share/phaser/audits/{project}/` (Linux) |
 | Global config | `~/.claude/CLAUDE.md` |
+| Phaser storage (global) | `~/.phaser/` |
+| Phaser storage (project) | `{project}/.phaser/` |
+| Contracts | `~/.phaser/contracts/` |
+| Events | `~/.phaser/events.yaml` |
 
 ---
 
@@ -237,4 +277,4 @@ rm -rf .audit/
 
 ---
 
-*Phaser v1.1*
+*Phaser v1.2*
