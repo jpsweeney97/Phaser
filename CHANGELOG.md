@@ -2,6 +2,41 @@
 
 All notable changes to Phaser will be documented in this file.
 
+## [1.3.0] - 2025-12-05
+
+### Added
+
+#### CI Integration (`phaser ci`)
+
+- `phaser ci init` — Generate GitHub Actions workflow for contract checking
+- `phaser ci status` — Show CI configuration status
+- `phaser ci remove` — Remove CI workflow file
+- Supports customizable Python version, triggers, and branches
+- Dry-run mode for previewing workflow
+
+#### Insights & Analytics (`phaser insights`)
+
+- `phaser insights summary` — High-level audit statistics
+- `phaser insights audits` — List audits with phase counts and duration
+- `phaser insights contracts` — Contract violation statistics
+- `phaser insights files` — File change hotspots
+- `phaser insights events` — Event type statistics
+- `phaser insights trends` — Trends over time (daily/weekly/monthly)
+- Supports `--global` flag for cross-project analytics
+- Flexible date filtering with relative formats (7d, 4w, 3m)
+
+#### Specifications
+
+- `specs/ci.md` — CI Check feature specification
+- `specs/insights.md` — Insights feature specification
+
+### Changed
+
+- Version bumped to 1.3.0
+- Updated `phaser version` output to list new features
+
+---
+
 ## [1.2.0] - 2025-12-05
 
 ### Added
