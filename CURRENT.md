@@ -7,11 +7,11 @@
 - [x] Phase 30: Replay Specification
 - [x] Phase 31: Replay Data Structures
 - [x] Phase 32: Replay Engine Implementation
-- [ ] Phase 33: Replay CLI Commands
+- [x] Phase 33: Replay CLI Commands
 - [ ] Phase 34: Replay Integration with Storage
 - [ ] Phase 35: Tests and Documentation
 
-## Current Phase: 33
+## Current Phase: 34
 
 ## Notes
 

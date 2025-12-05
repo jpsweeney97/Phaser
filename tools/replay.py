@@ -675,3 +675,373 @@ def save_replay_result(
             "last_replay_passed": result.passed,
         },
     )
+
+
+# =============================================================================
+# Formatting Functions
+# =============================================================================
+
+
+def format_replay_result(
+    result: ReplayResult,
+    verbose: bool = False,
+) -> str:
+    """
+    Format replay result for terminal display.
+
+    Args:
+        result: ReplayResult to format
+        verbose: Include detailed regression information
+
+    Returns:
+        Formatted string for display
+    """
+    lines = [
+        f"Replay Results: {result.audit_slug}",
+        "=" * (len(f"Replay Results: {result.audit_slug}")),
+        f"Replayed at: {result.replayed_at}",
+        "",
+    ]
+
+    # Contract results
+    if result.contracts_checked > 0:
+        contract_status = "✓" if result.contracts_passed == result.contracts_checked else "✗"
+        lines.append(
+            f"Contracts: {result.contracts_checked} checked, "
+            f"{result.contracts_passed} passed {contract_status}"
+        )
+
+    # File results
+    if result.files_checked > 0:
+        file_status = "✓" if result.files_passed == result.files_checked else "✗"
+        lines.append(
+            f"Files: {result.files_checked} checked, "
+            f"{result.files_passed} passed {file_status}"
+        )
+
+    lines.append("")
+
+    if result.passed:
+        lines.append("No regressions detected.")
+    else:
+        lines.append(f"Regressions ({result.regression_count}):")
+        lines.append("")
+
+        for i, reg in enumerate(result.regressions, 1):
+            severity_marker = "ERROR" if reg.severity == "error" else "WARNING"
+            type_label = reg.type.value.replace("_", " ").title()
+            lines.append(f"{i}. [{severity_marker}] {type_label}: {reg.source}")
+            lines.append(f"   {reg.message}")
+
+            if verbose and reg.details:
+                if "violations" in reg.details:
+                    for v in reg.details["violations"][:3]:  # Show first 3
+                        path = v.get("path", "unknown")
+                        line = v.get("line", "?")
+                        lines.append(f"   - {path}:{line}")
+                    if len(reg.details["violations"]) > 3:
+                        remaining = len(reg.details["violations"]) - 3
+                        lines.append(f"   ... and {remaining} more")
+
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def format_replayable_audits(audits: list[ReplayableAudit]) -> str:
+    """
+    Format list of replayable audits for terminal display.
+
+    Args:
+        audits: List of ReplayableAudit to format
+
+    Returns:
+        Formatted string for display
+    """
+    if not audits:
+        return (
+            "No completed audits available for replay.\n\n"
+            "Complete an audit first, then use 'phaser replay <slug>'."
+        )
+
+    lines = [
+        "Audits Available for Replay",
+        "===========================",
+        "",
+        f"{'Slug':<24} {'Date':<12} {'Phases':<8} {'Contracts':<10} {'Status':<12}",
+        f"{'-' * 24} {'-' * 12} {'-' * 8} {'-' * 10} {'-' * 12}",
+    ]
+
+    for audit in audits:
+        slug = audit.slug[:24] if len(audit.slug) <= 24 else audit.slug[:21] + "..."
+        contracts = len(audit.contract_ids)
+        lines.append(
+            f"{slug:<24} {audit.date:<12} {audit.phase_count:<8} {contracts:<10} {audit.status:<12}"
+        )
+
+    return "\n".join(lines)
+
+
+def format_audit_details(
+    audit: ReplayableAudit,
+    contracts: list[Any],
+    file_changes: list[FileChange],
+) -> str:
+    """
+    Format detailed audit information for terminal display.
+
+    Args:
+        audit: ReplayableAudit to format
+        contracts: Contracts created by this audit
+        file_changes: File changes from this audit
+
+    Returns:
+        Formatted string for display
+    """
+    lines = [
+        f"Audit: {audit.slug}",
+        "=" * (len(f"Audit: {audit.slug}")),
+        "",
+        f"ID: {audit.id}",
+        f"Date: {audit.date}",
+        f"Status: {audit.status}",
+        f"Phases: {audit.phase_count}",
+        "",
+    ]
+
+    if contracts:
+        lines.append("Contracts Created:")
+        for c in contracts:
+            severity = c.rule.severity.value if hasattr(c.rule.severity, 'value') else str(c.rule.severity)
+            lines.append(f"  - {c.rule.id} ({severity})")
+        lines.append("")
+
+    # Count file changes by type
+    created = sum(1 for f in file_changes if f.change_type == "created")
+    modified = sum(1 for f in file_changes if f.change_type == "modified")
+    deleted = sum(1 for f in file_changes if f.change_type == "deleted")
+
+    if file_changes:
+        lines.append(f"Files Modified: {modified}")
+        lines.append(f"Files Created: {created}")
+        lines.append(f"Files Deleted: {deleted}")
+        lines.append("")
+
+    if audit.last_replayed:
+        lines.append(f"Last Replayed: {audit.last_replayed}")
+        status = "passed" if audit.last_replay_passed else "regressions detected"
+        lines.append(f"Replay Status: {status}")
+
+    return "\n".join(lines)
+
+
+# =============================================================================
+# CLI Interface
+# =============================================================================
+
+import click
+
+
+@click.group()
+def cli() -> None:
+    """Replay past audits to detect regressions."""
+    pass
+
+
+@cli.command(name="run")
+@click.argument("audit_slug")
+@click.option("--root", type=click.Path(exists=True), default=".", help="Root directory to check")
+@click.option(
+    "--scope",
+    type=click.Choice(["all", "contracts", "files"]),
+    default="all",
+    help="What to check",
+)
+@click.option("--fail-on-regression", is_flag=True, help="Exit 1 if regressions found")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["text", "json"]),
+    default="text",
+    help="Output format",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed regression info")
+@click.option("--save/--no-save", default=True, help="Save replay result to history")
+def run_replay(
+    audit_slug: str,
+    root: str,
+    scope: str,
+    fail_on_regression: bool,
+    output_format: str,
+    verbose: bool,
+    save: bool,
+) -> None:
+    """
+    Replay an audit and check for regressions.
+
+    AUDIT_SLUG is the slug of the audit to replay, or "latest" for the
+    most recent completed audit.
+
+    Examples:
+
+        phaser replay run latest
+
+        phaser replay run security-hardening
+
+        phaser replay run security-hardening --fail-on-regression
+
+        phaser replay run security-hardening --scope contracts --verbose
+    """
+    import json
+
+    storage = PhaserStorage()
+    root_path = Path(root).resolve()
+
+    try:
+        result = replay_audit(
+            audit_slug=audit_slug,
+            storage=storage,
+            root=root_path,
+            scope=ReplayScope(scope),
+        )
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(2)
+
+    # Optionally save result
+    if save:
+        try:
+            save_replay_result(result, storage)
+        except Exception as e:
+            click.echo(f"Warning: Failed to save replay result: {e}", err=True)
+
+    # Output
+    if output_format == "json":
+        click.echo(json.dumps(result.to_dict(), indent=2))
+    else:
+        click.echo(format_replay_result(result, verbose=verbose))
+
+    # Exit code
+    if fail_on_regression and not result.passed:
+        raise SystemExit(1)
+
+
+@cli.command(name="list")
+@click.option(
+    "--status",
+    type=click.Choice(["completed", "all"]),
+    default="completed",
+    help="Filter by status",
+)
+@click.option("--limit", default=20, help="Maximum audits to show")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["text", "json"]),
+    default="text",
+    help="Output format",
+)
+def list_audits(status: str, limit: int, output_format: str) -> None:
+    """
+    List audits available for replay.
+
+    Shows completed audits with their phase and contract counts.
+
+    Examples:
+
+        phaser replay list
+
+        phaser replay list --status all
+
+        phaser replay list --limit 10 --format json
+    """
+    import json
+
+    storage = PhaserStorage()
+    audits = get_replayable_audits(storage, status=status, limit=limit)
+
+    if output_format == "json":
+        click.echo(json.dumps([a.to_dict() for a in audits], indent=2))
+    else:
+        click.echo(format_replayable_audits(audits))
+
+
+@cli.command(name="show")
+@click.argument("audit_slug")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["text", "json"]),
+    default="text",
+    help="Output format",
+)
+def show_audit(audit_slug: str, output_format: str) -> None:
+    """
+    Show details of an audit for replay.
+
+    Displays contracts created, files changed, and replay history.
+
+    Examples:
+
+        phaser replay show security-hardening
+
+        phaser replay show latest --format json
+    """
+    import json
+
+    storage = PhaserStorage()
+
+    # Find the audit
+    audit_dict = get_audit_by_slug(audit_slug, storage)
+    if not audit_dict:
+        click.echo(f"Error: Audit '{audit_slug}' not found.", err=True)
+
+        # Show available audits
+        audits = get_replayable_audits(storage, status="completed", limit=5)
+        if audits:
+            click.echo("\nAvailable audits:")
+            for a in audits:
+                click.echo(f"  - {a.slug} ({a.date})")
+
+        raise SystemExit(2)
+
+    audit_id = audit_dict.get("id", "")
+
+    # Get related data
+    try:
+        contracts = get_audit_contracts(audit_id, storage)
+    except Exception:
+        contracts = []
+
+    try:
+        file_changes = get_audit_file_changes(audit_id, storage)
+    except Exception:
+        file_changes = []
+
+    # Get phase count
+    try:
+        events = storage.get_events(audit_id=audit_id)
+        phase_count = sum(1 for e in events if e.get("type") == "phase_completed")
+    except Exception:
+        phase_count = 0
+
+    # Build ReplayableAudit
+    audit = ReplayableAudit(
+        id=audit_id,
+        slug=audit_dict.get("slug", ""),
+        date=audit_dict.get("date", ""),
+        status=audit_dict.get("status", ""),
+        phase_count=phase_count,
+        contract_ids=[c.rule.id for c in contracts],
+        file_change_count=len(file_changes),
+        last_replayed=audit_dict.get("last_replayed"),
+        last_replay_passed=audit_dict.get("last_replay_passed"),
+    )
+
+    if output_format == "json":
+        data = audit.to_dict()
+        data["contracts"] = [{"id": c.rule.id, "type": c.rule.type.value} for c in contracts]
+        data["file_changes"] = [f.to_dict() for f in file_changes]
+        click.echo(json.dumps(data, indent=2))
+    else:
+        click.echo(format_audit_details(audit, contracts, file_changes))
