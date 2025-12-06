@@ -25,6 +25,8 @@ from tools.bridge import (
     parse_baseline_test_count,
     extract_overview,
     extract_completion_block,
+    find_code_block_ranges,
+    is_inside_code_block,
     detect_phase_boundaries,
     parse_files_table,
     parse_section,
@@ -1053,3 +1055,188 @@ Final steps
         # Check prompt includes all phases
         assert "phase-1.md" in result.prompt
         assert "phase-3.md" in result.prompt
+
+
+# =============================================================================
+# Code Block Detection Tests (Regression for v1.6.1)
+# =============================================================================
+
+
+class TestFindCodeBlockRanges:
+    def test_single_code_block(self):
+        content = """Line 1
+```python
+code here
+```
+Line 5"""
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+        # The code block should be found
+        start, end = ranges[0]
+        assert "```python" in content[start:end]
+        assert "code here" in content[start:end]
+
+    def test_multiple_code_blocks(self):
+        content = """
+```python
+block 1
+```
+
+Some text
+
+```bash
+block 2
+```
+"""
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 2
+
+    def test_no_code_blocks(self):
+        content = "No code blocks here\nJust plain text"
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 0
+
+    def test_code_block_with_language(self):
+        content = """```javascript
+const x = 1;
+```"""
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+
+    def test_code_block_without_language(self):
+        content = """```
+plain code
+```"""
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+
+
+class TestIsInsideCodeBlock:
+    def test_position_before_code_block(self):
+        ranges = [(10, 50)]
+        assert is_inside_code_block(5, ranges) is False
+
+    def test_position_inside_code_block(self):
+        ranges = [(10, 50)]
+        assert is_inside_code_block(25, ranges) is True
+
+    def test_position_at_start_of_code_block(self):
+        ranges = [(10, 50)]
+        assert is_inside_code_block(10, ranges) is True
+
+    def test_position_at_end_of_code_block(self):
+        ranges = [(10, 50)]
+        # End is exclusive
+        assert is_inside_code_block(50, ranges) is False
+
+    def test_position_after_code_block(self):
+        ranges = [(10, 50)]
+        assert is_inside_code_block(60, ranges) is False
+
+    def test_multiple_code_blocks(self):
+        ranges = [(10, 20), (50, 70)]
+        assert is_inside_code_block(5, ranges) is False
+        assert is_inside_code_block(15, ranges) is True
+        assert is_inside_code_block(35, ranges) is False
+        assert is_inside_code_block(60, ranges) is True
+        assert is_inside_code_block(80, ranges) is False
+
+    def test_empty_ranges(self):
+        ranges = []
+        assert is_inside_code_block(10, ranges) is False
+
+
+class TestDetectPhaseBoundariesWithCodeBlocks:
+    def test_ignores_phase_inside_code_block(self):
+        content = """
+## Phase 1: Real Phase
+Real content
+
+```python
+content = '''
+## Phase 1: Fake Phase
+Fake content
+'''
+```
+
+## Phase 2: Another Real Phase
+More content
+"""
+        boundaries = detect_phase_boundaries(content)
+        assert len(boundaries) == 2
+        phase_nums = [b[0] for b in boundaries]
+        assert phase_nums == [1, 2]
+
+    def test_ignores_multiple_fake_phases(self):
+        content = """
+## Phase 1: Real
+
+```markdown
+## Phase 2: Fake
+## Phase 3: Also Fake
+```
+
+## Phase 4: Real
+
+```python
+# ## Phase 5: In Comment (still in code block)
+```
+"""
+        boundaries = detect_phase_boundaries(content)
+        assert len(boundaries) == 2
+        phase_nums = [b[0] for b in boundaries]
+        assert phase_nums == [1, 4]
+
+    def test_handles_nested_backticks_in_code_block(self):
+        content = '''
+## Phase 1: Real
+
+```python
+doc = """
+## Phase 2: Fake in docstring
+"""
+```
+
+## Phase 3: Real
+'''
+        boundaries = detect_phase_boundaries(content)
+        assert len(boundaries) == 2
+        phase_nums = [b[0] for b in boundaries]
+        assert phase_nums == [1, 3]
+
+    def test_no_code_blocks_works_normally(self):
+        content = """
+## Phase 1: First
+Content
+
+## Phase 2: Second
+Content
+
+## Document Completion
+Done
+"""
+        boundaries = detect_phase_boundaries(content)
+        assert len(boundaries) == 2
+
+    def test_document_completion_not_in_code_block(self):
+        content = """
+## Phase 1: Only Phase
+Content
+
+```markdown
+## Document Completion
+Fake completion
+```
+
+## Document Completion
+Real completion
+
+More content after completion
+"""
+        boundaries = detect_phase_boundaries(content)
+        assert len(boundaries) == 1
+        # The phase should end at the real Document Completion, not the fake one
+        _, start, end = boundaries[0]
+        assert end < len(content)  # Should not extend to end of content
+        # Also verify end is at the real completion, not fake one in code block
+        assert "Real completion" not in content[start:end]

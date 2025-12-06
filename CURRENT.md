@@ -5,9 +5,9 @@
 ## Phases
 
 - [x] Phase 1: Fix detect_phase_boundaries Function
-- [ ] Phase 2: Add Regression Tests
+- [x] Phase 2: Add Regression Tests
 
-## Current Phase: 2
+## Current Phase: COMPLETE
 
 ## Notes
 

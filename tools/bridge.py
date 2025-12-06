@@ -429,14 +429,20 @@ def detect_phase_boundaries(content: str) -> list[tuple[int, int, int]]:
         if i + 1 < len(real_matches):
             end_idx = real_matches[i + 1].start()
         else:
-            # Check for Document Completion
-            completion_match = COMPLETION_HEADER_PATTERN.search(content, start_idx)
-            if completion_match and not is_inside_code_block(
-                completion_match.start(), code_block_ranges
-            ):
-                end_idx = completion_match.start()
-            else:
-                end_idx = len(content)
+            # Check for Document Completion (skip ones inside code blocks)
+            end_idx = len(content)
+            search_pos = start_idx
+            while True:
+                completion_match = COMPLETION_HEADER_PATTERN.search(content, search_pos)
+                if not completion_match:
+                    break
+                if not is_inside_code_block(
+                    completion_match.start(), code_block_ranges
+                ):
+                    end_idx = completion_match.start()
+                    break
+                # Move past this match and continue searching
+                search_pos = completion_match.end()
 
         boundaries.append((phase_num, start_idx, end_idx))
 
