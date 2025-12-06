@@ -856,3 +856,166 @@ class TestStorageOperations:
         from tools.analytics import clear_analytics
         count = clear_analytics(temp_project)
         assert count == 0
+
+
+# =============================================================================
+# Report Parsing Tests
+# =============================================================================
+
+
+class TestReportParsing:
+    """Tests for report parsing functions."""
+
+    @pytest.fixture
+    def sample_report(self):
+        """Load sample execution report."""
+        from pathlib import Path
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_execution_report.md"
+        return fixture_path.read_text()
+
+    @pytest.fixture
+    def temp_report(self, tmp_path, sample_report):
+        """Create temporary report file."""
+        report_path = tmp_path / "EXECUTION_REPORT.md"
+        report_path.write_text(sample_report)
+        return report_path
+
+    def test_parse_metadata_table(self, sample_report):
+        """Test metadata extraction."""
+        from tools.analytics import parse_metadata_table
+        metadata = parse_metadata_table(sample_report)
+        assert metadata["Audit Document"] == "document-7-reverse.md"
+        assert metadata["Document Title"] == "Document 7: Reverse Audit"
+        assert metadata["Project"] == "Phaser"
+        assert metadata["Branch"] == "audit/2024-12-06-reverse"
+        assert metadata["Base Commit"] == "a1b2c3d4e5f6"
+        assert metadata["Phaser Version"] == "1.6.3"
+
+    def test_parse_metadata_table_empty(self):
+        """Test parsing report without metadata."""
+        from tools.analytics import parse_metadata_table
+        metadata = parse_metadata_table("# No metadata here")
+        assert metadata == {}
+
+    def test_parse_phase_table(self, sample_report):
+        """Test phase table extraction."""
+        from tools.analytics import parse_phase_table
+        phases = parse_phase_table(sample_report)
+        assert len(phases) == 6
+        assert phases[0]["phase_number"] == 36
+        assert phases[0]["title"] == "Reverse Audit Specification"
+        assert phases[0]["status"] == PhaseStatus.COMPLETED
+        assert phases[0]["commit_sha"] == "b2c3d4e"
+
+    def test_parse_phase_table_failed_phase(self):
+        """Test parsing failed phase."""
+        from tools.analytics import parse_phase_table
+        content = """
+## Execution Summary
+
+| Phase | Title | Status | Commit |
+|-------|-------|--------|--------|
+| 1 | First Phase | ❌ |  |
+"""
+        phases = parse_phase_table(content)
+        assert len(phases) == 1
+        assert phases[0]["status"] == PhaseStatus.FAILED
+        assert phases[0]["commit_sha"] is None
+
+    def test_parse_test_results(self, sample_report):
+        """Test test results extraction."""
+        from tools.analytics import parse_test_results
+        results = parse_test_results(sample_report)
+        assert results["baseline"] == 280
+        assert results["final"] == 312
+        assert results["delta"] == 32
+
+    def test_parse_test_results_negative_delta(self):
+        """Test parsing negative test delta."""
+        from tools.analytics import parse_test_results
+        content = """
+## Test Results
+
+**Baseline:** 100 tests
+**Final:** 95 tests
+**Delta:** -5 tests
+"""
+        results = parse_test_results(content)
+        assert results["delta"] == -5
+
+    def test_parse_execution_result_success(self, sample_report):
+        """Test parsing successful result."""
+        from tools.analytics import parse_execution_result
+        status, completed, planned = parse_execution_result(sample_report)
+        assert status == ExecutionStatus.SUCCESS
+        assert completed == 6
+        assert planned == 6
+
+    def test_parse_execution_result_partial(self):
+        """Test parsing partial result."""
+        from tools.analytics import parse_execution_result
+        content = """
+**Result:** ⚠️ Completed with issues
+
+**Phases:** 4 of 6 completed
+"""
+        status, completed, planned = parse_execution_result(content)
+        assert status == ExecutionStatus.PARTIAL
+        assert completed == 4
+        assert planned == 6
+
+    def test_parse_git_info(self, sample_report):
+        """Test git info extraction."""
+        from tools.analytics import parse_git_info
+        info = parse_git_info(sample_report)
+        assert info["commit_count"] == 7
+        assert info["files_changed"] == 12
+        assert info["final_commit"] == "g7h8i9j"
+
+    def test_parse_execution_report_full(self, sample_report):
+        """Test full report parsing."""
+        from tools.analytics import parse_execution_report
+        data = parse_execution_report(sample_report)
+        assert data["audit_document"] == "document-7-reverse.md"
+        assert data["status"] == ExecutionStatus.SUCCESS
+        assert data["phases_planned"] == 6
+        assert data["baseline_tests"] == 280
+        assert data["final_tests"] == 312
+        assert len(data["phases"]) == 6
+
+    def test_parse_execution_report_missing_metadata(self):
+        """Test parsing report without metadata raises error."""
+        from tools.analytics import parse_execution_report
+        with pytest.raises(ImportError, match="Missing or invalid Metadata"):
+            parse_execution_report("# No metadata")
+
+    def test_import_execution_report(self, temp_report):
+        """Test importing report creates record."""
+        from tools.analytics import import_execution_report
+        record = import_execution_report(temp_report)
+        assert record.audit_document == "document-7-reverse.md"
+        assert record.status == ExecutionStatus.SUCCESS
+        assert record.baseline_tests == 280
+        assert record.final_tests == 312
+        assert len(record.phases) == 6
+
+    def test_import_execution_report_not_found(self, tmp_path):
+        """Test importing non-existent report raises error."""
+        from tools.analytics import import_execution_report
+        with pytest.raises(StorageError, match="not found"):
+            import_execution_report(tmp_path / "missing.md")
+
+    def test_import_execution_report_invalid(self, tmp_path):
+        """Test importing invalid report raises error."""
+        from tools.analytics import import_execution_report
+        bad_report = tmp_path / "bad.md"
+        bad_report.write_text("Not a valid report")
+        with pytest.raises(ImportError):
+            import_execution_report(bad_report)
+
+    def test_import_creates_unique_id(self, temp_report):
+        """Test each import creates unique ID."""
+        from tools.analytics import import_execution_report
+        record1 = import_execution_report(temp_report)
+        record2 = import_execution_report(temp_report)
+        assert record1.execution_id != record2.execution_id

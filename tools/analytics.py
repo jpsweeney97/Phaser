@@ -760,3 +760,333 @@ def clear_analytics(project_dir: Path) -> int:
         index_path.unlink()
 
     return count
+
+
+# =============================================================================
+# Report Parsing
+# =============================================================================
+
+# Patterns for parsing execution reports
+METADATA_TABLE_PATTERN = re.compile(
+    r"\|\s*(?P<field>[^|]+?)\s*\|\s*(?P<value>[^|]+?)\s*\|"
+)
+PHASE_ROW_PATTERN = re.compile(
+    r"\|\s*(?P<number>\d+)\s*\|\s*(?P<title>[^|]+?)\s*\|\s*(?P<status>[✅⚠️❌][^\|]*)\s*\|\s*(?P<commit>[a-zA-Z0-9]*)\s*\|"
+)
+TEST_COUNT_PATTERN = re.compile(r"(\d+)\s*(?:tests?|passed)")
+RESULT_PATTERN = re.compile(r"\*\*Result:\*\*\s*(.+)")
+PHASES_SUMMARY_PATTERN = re.compile(r"\*\*Phases:\*\*\s*(\d+)\s*of\s*(\d+)")
+FILES_CHANGED_PATTERN = re.compile(r"(\d+)\s*files?\s*changed")
+COMMITS_COUNT_PATTERN = re.compile(r"\*\*Commits:\*\*\s*(\d+)")
+
+
+def parse_metadata_table(content: str) -> dict[str, str]:
+    """
+    Extract key-value pairs from Metadata table.
+
+    Args:
+        content: Full report content
+
+    Returns:
+        Dictionary of metadata fields
+    """
+    metadata = {}
+    in_metadata = False
+    header_skipped = False
+
+    for line in content.split("\n"):
+        if "## Metadata" in line:
+            in_metadata = True
+            continue
+        if in_metadata and line.startswith("## "):
+            break
+        if in_metadata:
+            match = METADATA_TABLE_PATTERN.match(line)
+            if match:
+                field = match.group("field").strip()
+                value = match.group("value").strip()
+                # Skip header row and separator
+                if field in ("Field", "---", "-----", "-------"):
+                    header_skipped = True
+                    continue
+                if header_skipped and field and value and value != "---":
+                    metadata[field] = value
+
+    return metadata
+
+
+def parse_phase_table(content: str) -> list[dict[str, Any]]:
+    """
+    Extract phase details from Execution Summary table.
+
+    Args:
+        content: Full report content
+
+    Returns:
+        List of phase dictionaries
+    """
+    phases = []
+    in_summary = False
+
+    for line in content.split("\n"):
+        if "## Execution Summary" in line:
+            in_summary = True
+            continue
+        if in_summary and line.startswith("## "):
+            break
+        if in_summary:
+            match = PHASE_ROW_PATTERN.match(line)
+            if match:
+                phases.append({
+                    "phase_number": int(match.group("number")),
+                    "title": match.group("title").strip(),
+                    "status": PhaseStatus.from_symbol(match.group("status")),
+                    "commit_sha": match.group("commit").strip() or None,
+                })
+
+    return phases
+
+
+def parse_test_results(content: str) -> dict[str, int]:
+    """
+    Extract test counts from Test Results section.
+
+    Args:
+        content: Full report content
+
+    Returns:
+        Dictionary with baseline, final, delta
+    """
+    results = {"baseline": 0, "final": 0, "delta": 0}
+    in_tests = False
+
+    for line in content.split("\n"):
+        if "## Test Results" in line:
+            in_tests = True
+            continue
+        if in_tests and line.startswith("## "):
+            break
+        if in_tests:
+            if "**Baseline:**" in line:
+                match = TEST_COUNT_PATTERN.search(line)
+                if match:
+                    results["baseline"] = int(match.group(1))
+            elif "**Final:**" in line:
+                match = TEST_COUNT_PATTERN.search(line)
+                if match:
+                    results["final"] = int(match.group(1))
+            elif "**Delta:**" in line:
+                # Extract number, handling +/- prefix
+                delta_match = re.search(r"[+-]?(\d+)", line)
+                if delta_match:
+                    sign = -1 if "-" in line.split(delta_match.group(1))[0] else 1
+                    results["delta"] = sign * int(delta_match.group(1))
+
+    return results
+
+
+def parse_execution_result(content: str) -> tuple[ExecutionStatus, int, int]:
+    """
+    Extract execution result and phase counts.
+
+    Args:
+        content: Full report content
+
+    Returns:
+        Tuple of (status, phases_completed, phases_planned)
+    """
+    status = ExecutionStatus.FAILED
+    completed = 0
+    planned = 0
+
+    for line in content.split("\n"):
+        result_match = RESULT_PATTERN.search(line)
+        if result_match:
+            status = ExecutionStatus.from_report(result_match.group(1))
+
+        phases_match = PHASES_SUMMARY_PATTERN.search(line)
+        if phases_match:
+            completed = int(phases_match.group(1))
+            planned = int(phases_match.group(2))
+
+    return status, completed, planned
+
+
+def parse_git_info(content: str) -> dict[str, Any]:
+    """
+    Extract git information from report.
+
+    Args:
+        content: Full report content
+
+    Returns:
+        Dictionary with commit_count, files_changed
+    """
+    info = {"commit_count": 0, "files_changed": 0, "final_commit": ""}
+
+    # Find commits count
+    commits_match = COMMITS_COUNT_PATTERN.search(content)
+    if commits_match:
+        info["commit_count"] = int(commits_match.group(1))
+
+    # Find files changed
+    files_match = FILES_CHANGED_PATTERN.search(content)
+    if files_match:
+        info["files_changed"] = int(files_match.group(1))
+
+    # Extract final commit from git log (first line after ``` in Git History)
+    in_git_history = False
+    in_code_block = False
+    for line in content.split("\n"):
+        if "## Git History" in line:
+            in_git_history = True
+            continue
+        if in_git_history and line.startswith("## "):
+            break
+        if in_git_history and line.strip() == "```":
+            if not in_code_block:
+                in_code_block = True
+                continue
+            else:
+                break
+        if in_git_history and in_code_block and line.strip():
+            # First non-empty line in code block is the latest commit
+            parts = line.strip().split()
+            if parts:
+                info["final_commit"] = parts[0]
+            break
+
+    return info
+
+
+def parse_execution_report(content: str) -> dict[str, Any]:
+    """
+    Parse EXECUTION_REPORT.md into structured data.
+
+    Args:
+        content: Raw markdown content of report
+
+    Returns:
+        Dictionary with all extracted fields
+
+    Raises:
+        ImportError: If required sections missing
+    """
+    metadata = parse_metadata_table(content)
+    if not metadata:
+        raise ImportError("Missing or invalid Metadata section")
+
+    phases = parse_phase_table(content)
+    test_results = parse_test_results(content)
+    status, completed, planned = parse_execution_result(content)
+    git_info = parse_git_info(content)
+
+    # Parse timestamps
+    started_at = None
+    completed_at = None
+    if "Started" in metadata:
+        try:
+            started_at = datetime.fromisoformat(
+                metadata["Started"].replace("Z", "+00:00")
+            )
+        except ValueError:
+            pass
+    if "Completed" in metadata:
+        try:
+            completed_at = datetime.fromisoformat(
+                metadata["Completed"].replace("Z", "+00:00")
+            )
+        except ValueError:
+            pass
+
+    return {
+        "audit_document": metadata.get("Audit Document", ""),
+        "document_title": metadata.get("Document Title", ""),
+        "project_name": metadata.get("Project", ""),
+        "project_path": metadata.get("Project Path", ""),
+        "branch": metadata.get("Branch", ""),
+        "base_commit": metadata.get("Base Commit", ""),
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "phaser_version": metadata.get("Phaser Version", ""),
+        "status": status,
+        "phases_planned": planned or len(phases),
+        "phases_completed": completed,
+        "phases": phases,
+        "baseline_tests": test_results["baseline"],
+        "final_tests": test_results["final"],
+        "commit_count": git_info["commit_count"],
+        "files_changed": git_info["files_changed"],
+        "final_commit": git_info["final_commit"],
+    }
+
+
+def import_execution_report(
+    report_path: Path,
+    project_dir: Path | None = None,
+) -> ExecutionRecord:
+    """
+    Parse EXECUTION_REPORT.md and create an execution record.
+
+    Args:
+        report_path: Path to EXECUTION_REPORT.md
+        project_dir: Project directory (inferred if not provided)
+
+    Returns:
+        ExecutionRecord with all metrics
+
+    Raises:
+        ImportError: If report format is invalid
+        StorageError: If file cannot be read
+    """
+    if not report_path.exists():
+        raise StorageError(f"Report file not found: {report_path}")
+
+    try:
+        content = report_path.read_text()
+    except OSError as e:
+        raise StorageError(f"Failed to read report: {e}")
+
+    data = parse_execution_report(content)
+
+    # Validate required fields
+    if not data["started_at"] or not data["completed_at"]:
+        raise ImportError("Missing or invalid timestamps in report")
+
+    # Create phase records
+    phase_records = [
+        PhaseRecord(
+            phase_number=p["phase_number"],
+            title=p["title"],
+            status=p["status"],
+            commit_sha=p["commit_sha"],
+        )
+        for p in data["phases"]
+    ]
+
+    # Determine project_dir
+    if project_dir is None:
+        project_dir = report_path.parent
+
+    return ExecutionRecord(
+        execution_id=ExecutionRecord.generate_id(),
+        audit_document=data["audit_document"],
+        document_title=data["document_title"],
+        project_name=data["project_name"],
+        project_path=data["project_path"],
+        branch=data["branch"],
+        started_at=data["started_at"].replace(tzinfo=None),
+        completed_at=data["completed_at"].replace(tzinfo=None),
+        phaser_version=data["phaser_version"],
+        status=data["status"],
+        phases_planned=data["phases_planned"],
+        phases_completed=data["phases_completed"],
+        baseline_tests=data["baseline_tests"],
+        final_tests=data["final_tests"],
+        base_commit=data["base_commit"],
+        final_commit=data["final_commit"],
+        commit_count=data["commit_count"],
+        files_changed=data["files_changed"],
+        phases=phase_records,
+        report_path=str(report_path),
+    )
