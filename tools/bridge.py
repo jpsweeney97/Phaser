@@ -19,7 +19,7 @@ from typing import Any
 # Constants
 # =============================================================================
 
-PHASER_VERSION = "1.6.1"
+PHASER_VERSION = "1.6.2"
 
 SETUP_START_MARKER = "=== AUDIT SETUP START ==="
 SETUP_END_MARKER = "=== AUDIT SETUP END ==="
@@ -370,7 +370,10 @@ def extract_completion_block(content: str) -> str | None:
 
 def find_code_block_ranges(content: str) -> list[tuple[int, int]]:
     """
-    Find all fenced code block ranges in content.
+    Find all fenced code block ranges using state tracking.
+
+    Uses line-by-line state tracking instead of regex to correctly handle
+    nested backticks, code examples containing markdown, and other edge cases.
 
     Args:
         content: Document content
@@ -379,10 +382,31 @@ def find_code_block_ranges(content: str) -> list[tuple[int, int]]:
         List of (start, end) tuples for each code block
     """
     ranges = []
-    # Match fenced code blocks (``` with optional language identifier)
-    pattern = re.compile(r"```[^\n]*\n.*?```", re.DOTALL)
-    for match in pattern.finditer(content):
-        ranges.append((match.start(), match.end()))
+    lines = content.split('\n')
+    in_block = False
+    block_start = 0
+    current_pos = 0
+
+    for line in lines:
+        # Check if line starts with ``` (fence marker)
+        stripped = line.lstrip()
+        if stripped.startswith('```'):
+            if not in_block:
+                # Entering a code block
+                in_block = True
+                block_start = current_pos
+            else:
+                # Exiting a code block
+                in_block = False
+                block_end = current_pos + len(line)
+                ranges.append((block_start, block_end))
+
+        current_pos += len(line) + 1  # +1 for newline
+
+    # Handle unclosed code block (extends to end of document)
+    if in_block:
+        ranges.append((block_start, len(content)))
+
     return ranges
 
 

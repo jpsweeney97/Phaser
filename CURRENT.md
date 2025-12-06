@@ -1,15 +1,16 @@
-# Parser Code Block Fix Progress
+# Code Block Detection Fix Progress
 
 ## Status: IN PROGRESS
 
 ## Phases
 
-- [x] Phase 1: Fix detect_phase_boundaries Function
-- [x] Phase 2: Add Regression Tests
+- [x] Phase 1: Fix find_code_block_ranges Function
+- [x] Phase 2: Add Edge Case Tests
 
 ## Current Phase: COMPLETE
 
 ## Notes
 
 Started: 2024-12-06
-Bug: Parser detects ## Phase N: inside code blocks as real phases
+Bug: Regex-based code block detection fails on nested backticks
+Fix: State-based line tracking
