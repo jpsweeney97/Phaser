@@ -990,3 +990,157 @@ def split_document(
     meta_dir = write_metadata(project_dir, baseline)
 
     return setup_file, phase_files, meta_dir
+
+
+# =============================================================================
+# Prompt Generation
+# =============================================================================
+
+EXECUTION_PROMPT_TEMPLATE = '''Execute audit-phases/setup.md first, then execute audit-phases/phase-{start}.md through phase-{end}.md in order.
+
+IMPORTANT: During setup.md execution, after creating the git branch, run:
+  mkdir -p .audit-meta
+  git rev-parse HEAD > .audit-meta/base-commit
+This captures the base commit for the execution report.
+
+For each phase:
+1. Read the phase file completely before starting
+2. Execute all steps in the Implementation section exactly as specified
+3. Run all Verify commands and confirm they produce the expected output
+4. If any verification fails, debug and fix the issue, then re-run verification until it passes
+5. Execute the Completion section (update CURRENT.md, git add, git commit)
+6. Proceed immediately to the next phase without pausing
+
+After all phases complete, generate EXECUTION_REPORT.md:
+
+1. Read metadata files:
+   - Base commit: cat .audit-meta/base-commit
+   - Baseline tests: cat .audit-meta/baseline-tests
+   - Phaser version: cat .audit-meta/phaser-version
+
+2. Capture current state:
+   - Run: git rev-parse --abbrev-ref HEAD (capture branch name)
+   - Run: python -m pytest tests/ -q (capture test output and count)
+   - Run: git log --oneline $(cat .audit-meta/base-commit)..HEAD (capture commit history)
+   - Run: git diff --stat $(cat .audit-meta/base-commit)..HEAD (capture files changed)
+
+3. Write EXECUTION_REPORT.md with this structure:
+
+# Execution Report: {document_name}
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| Audit Document | {source_filename} |
+| Document Title | {document_name} |
+| Project | [directory name from pwd] |
+| Project Path | [absolute path from pwd] |
+| Branch | [from git rev-parse --abbrev-ref HEAD] |
+| Base Commit | [from .audit-meta/base-commit] |
+| Started | [ISO8601 timestamp - record at start of setup.md] |
+| Completed | [ISO8601 timestamp - now] |
+| Phaser Version | [from .audit-meta/phaser-version] |
+
+## Execution Summary
+
+**Result:** [✅ All phases completed | ⚠️ Completed with issues | ❌ Failed]
+
+**Phases:** [completed count] of {phase_count} completed
+
+| Phase | Title | Status | Commit |
+|-------|-------|--------|--------|
+[One row per phase - extract title from phase file, commit from git log]
+
+## Test Results
+
+**Baseline:** [from .audit-meta/baseline-tests] tests
+**Final:** [count from pytest output] tests
+**Delta:** +[difference] tests
+
+```
+[Full pytest output]
+```
+
+## Git History
+
+**Branch:** [branch name]
+**Commits:** [count]
+
+```
+[Output of git log --oneline base-commit..HEAD]
+```
+
+## Files Changed
+
+**Summary:** [from git diff --stat summary line]
+
+```
+[Output of git diff --stat base-commit..HEAD]
+```
+
+## Audit Objectives
+
+From Document Overview:
+
+> [Quote the Document Overview section from AUDIT.md]
+
+## Acceptance Criteria Status
+
+| Phase | Criterion | Status |
+|-------|-----------|--------|
+[For each phase, list each acceptance criterion with ✅ or ❌]
+
+## Issues Encountered
+
+[List any issues that occurred during execution and how they were resolved.
+If no issues: "No issues encountered during execution."
+NOTE: This section may be incomplete - Claude Code may not recall all issues.]
+
+## Post-Execution Checklist
+
+For human review:
+
+- [ ] Review git diff for unintended changes
+- [ ] Run manual smoke tests
+- [ ] Merge to main when ready
+- [ ] Tag release if applicable
+- [ ] Archive AUDIT.md if desired
+
+## Rollback Instructions
+
+To undo this entire audit:
+
+```bash
+git checkout main
+git branch -D [audit branch name]
+```
+
+4. Commit the report:
+   git add EXECUTION_REPORT.md
+   git commit -m "Add execution report for {document_name}"
+
+Continue automatically without pausing for confirmation. Fix all errors autonomously. Do not ask for permission.'''
+
+
+def generate_execution_prompt(
+    document: AuditDocument,
+    source_filename: str,
+) -> str:
+    """
+    Generate the execution prompt for Claude Code.
+
+    Args:
+        document: Parsed audit document
+        source_filename: Original audit filename
+
+    Returns:
+        Complete prompt string
+    """
+    return EXECUTION_PROMPT_TEMPLATE.format(
+        start=document.phase_start,
+        end=document.phase_end,
+        phase_count=document.phase_count,
+        document_name=document.title,
+        source_filename=source_filename,
+    )
