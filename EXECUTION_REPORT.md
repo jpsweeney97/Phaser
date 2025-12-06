@@ -1,100 +1,127 @@
-# Execution Report: Document 1: Fence-Aware Code Block Detection + CLI Fix
+# Execution Report: Document 8: Analytics
 
 ## Metadata
 
 | Field | Value |
 |-------|-------|
-| Audit Document | AUDIT.md |
-| Document Title | Document 1: Fence-Aware Code Block Detection + CLI Fix |
+| Audit Document | document-8-analytics.md |
+| Document Title | Document 8: Analytics |
 | Project | Phaser |
 | Project Path | /Users/jp/Projects/Phaser |
-| Branch | fix/v1.6.3-fence-and-cli |
-| Base Commit | 061cbd7a1a23c45fc82f5f7937a6ba44aa7fe4e0 |
-| Started | 2025-12-06T06:35:00Z |
-| Completed | 2025-12-06T06:40:25Z |
-| Phaser Version | 1.6.3 |
+| Branch | audit/2024-12-06-analytics |
+| Base Commit | c0ad23a87bca1b07faed0ebd789f546977c54e35 |
+| Started | 2025-12-06T08:45:00Z |
+| Completed | 2025-12-06T08:56:14Z |
+| Phaser Version | 1.6.3 -> 1.7.0 |
 
 ## Execution Summary
 
 **Result:** ✅ All phases completed
 
-**Phases:** 3 of 3 completed
+**Phases:** 7 of 7 completed
 
 | Phase | Title | Status | Commit |
 |-------|-------|--------|--------|
-| 1 | Fix find_code_block_ranges with Fence Matching | ✅ Completed | f822ac3 |
-| 2 | Fix launch_claude_code CLI Function | ✅ Completed | 1f3eb5b |
-| 3 | Add Tests | ✅ Completed | cda8b27 |
+| 1 | Data Classes and Enums | ✅ | 6710edf |
+| 2 | Storage Operations | ✅ | 485d5d0 |
+| 3 | Report Parsing | ✅ | 55e2f8a |
+| 4 | Query and Aggregation | ✅ | 2811cd3 |
+| 5 | Output Formatting | ✅ | b5c3df1 |
+| 6 | CLI Commands | ✅ | 182ba9f |
+| 7 | Integration Tests | ✅ | 379e8cf |
 
 ## Test Results
 
-**Baseline:** 88 tests (test_bridge.py)
-**Final:** 108 tests (test_bridge.py), 499 total
-**Delta:** +20 tests
+**Baseline:** 499 tests
+**Final:** 630 tests
+**Delta:** +131 tests
 
 ```
-============================= test session starts ==============================
-platform darwin -- Python 3.12.12, pytest-9.0.1, pluggy-1.6.0
-rootdir: /Users/jp/Projects/Phaser
-configfile: pyproject.toml
-plugins: anyio-4.11.0, asyncio-1.3.0, hypothesis-6.148.3, cov-7.0.0
-collected 499 items
-tests/test_bridge.py ................................................... [100%]
-============================= 499 passed in 8.10s ==============================
+630 passed, 223 warnings in 8.20s
 ```
 
 ## Git History
 
-**Branch:** fix/v1.6.3-fence-and-cli
-**Commits:** 3
+**Branch:** audit/2024-12-06-analytics
+**Commits:** 7
 
 ```
-cda8b27 Phase 3: Add Tests
-1f3eb5b Phase 2: Fix launch_claude_code CLI Function
-f822ac3 Phase 1: Fix find_code_block_ranges with Fence Matching
+379e8cf Phase 7: Integration Tests
+182ba9f Phase 6: CLI Commands
+b5c3df1 Phase 5: Output Formatting
+2811cd3 Phase 4: Query and Aggregation
+55e2f8a Phase 3: Report Parsing
+485d5d0 Phase 2: Storage Operations
+6710edf Phase 1: Data Classes and Enums
 ```
 
 ## Files Changed
 
-**Summary:** 3 files changed, 271 insertions(+), 45 deletions(-)
+**Summary:** 6 files changed, 3510 insertions(+), 10 deletions(-)
 
 ```
-CURRENT.md           |  12 ++--
-tests/test_bridge.py | 185 +++++++++++++++++++++++++++++++++++++++++++++++++--
-tools/bridge.py      | 119 +++++++++++++++++++++++----------
-3 files changed, 271 insertions(+), 45 deletions(-)
+ CURRENT.md                                |   19 +-
+ tests/fixtures/sample_execution_report.md |   69 ++
+ tests/test_analytics.py                   | 1776 +++++++++++++++++++++++++++++
+ tools/analytics.py                        | 1457 +++++++++++++++++++++++
+ tools/bridge.py                           |    2 +-
+ tools/cli.py                              |  197 ++++
+ 6 files changed, 3510 insertions(+), 10 deletions(-)
 ```
 
 ## Audit Objectives
 
 From Document Overview:
 
-> This patch fixes two critical issues:
->
-> 1. **Code block detection:** Replaces simple toggle logic with fence-aware matching per CommonMark spec. A fence opened with N backticks can only be closed by N+ of the same character.
->
-> 2. **CLI launch:** Fixes `phaser execute` which silently failed because it used `-p` (print mode) instead of passing the prompt as an argument to start an interactive REPL.
+> This document implements the Analytics feature for Phaser, enabling execution metrics tracking, historical storage, and reporting. The feature parses EXECUTION_REPORT.md files to extract metrics, stores them in per-project `.phaser/analytics/` directories, and provides CLI commands for viewing, exporting, and managing analytics data.
 
 ## Acceptance Criteria Status
 
 | Phase | Criterion | Status |
 |-------|-----------|--------|
-| 1 | PHASER_VERSION is "1.6.3" | ✅ |
-| 1 | detect_fence_marker identifies fence char and length | ✅ |
-| 1 | find_code_block_ranges uses fence matching | ✅ |
-| 1 | 4-backtick blocks can contain 3-backtick content | ✅ |
-| 1 | All existing tests pass | ✅ |
-| 2 | launch_claude_code does not use `-p` flag | ✅ |
-| 2 | Prompt is passed as command argument | ✅ |
-| 2 | Function uses subprocess.run() and returns CompletedProcess | ✅ |
-| 2 | execute_audit return type updated | ✅ |
-| 2 | Claude Code launches interactively when called | ✅ |
-| 3 | detect_fence_marker import added | ✅ |
-| 3 | TestDetectFenceMarker has 13 tests passing | ✅ |
-| 3 | Fence-aware code block tests pass (5 new tests) | ✅ |
-| 3 | TestLaunchClaudeCode tests pass (2 tests) | ✅ |
-| 3 | All existing tests still pass | ✅ |
-| 3 | Full test suite passes | ✅ |
+| 1 | ExecutionStatus enum with from_report() | ✅ |
+| 1 | PhaseStatus enum with from_symbol() | ✅ |
+| 1 | PhaseRecord dataclass with serialization | ✅ |
+| 1 | ExecutionRecord dataclass with computed properties | ✅ |
+| 1 | AggregatedStats dataclass with compute() | ✅ |
+| 1 | AnalyticsQuery dataclass with matches() | ✅ |
+| 1 | Exception hierarchy | ✅ |
+| 1 | 51 tests passing | ✅ |
+| 2 | save_execution creates file | ✅ |
+| 2 | load_execution returns correct record | ✅ |
+| 2 | list_executions sorted by date | ✅ |
+| 2 | update_index rebuilds correctly | ✅ |
+| 2 | clear_analytics removes all data | ✅ |
+| 2 | 23 storage tests passing | ✅ |
+| 3 | parse_metadata_table extracts all fields | ✅ |
+| 3 | parse_phase_table returns correct phases | ✅ |
+| 3 | parse_test_results handles positive/negative | ✅ |
+| 3 | import_execution_report creates valid record | ✅ |
+| 3 | 15 parsing tests passing | ✅ |
+| 4 | query_executions respects all filters | ✅ |
+| 4 | compute_project_stats aggregates correctly | ✅ |
+| 4 | get_failed_phases returns sorted failures | ✅ |
+| 4 | Helper functions work correctly | ✅ |
+| 4 | 13 query tests passing | ✅ |
+| 5 | format_duration produces readable strings | ✅ |
+| 5 | format_table displays all data | ✅ |
+| 5 | format_json produces valid JSON | ✅ |
+| 5 | format_markdown has all sections | ✅ |
+| 5 | format_csv has correct columns | ✅ |
+| 5 | 14 formatting tests passing | ✅ |
+| 6 | `phaser analytics show` displays execution data | ✅ |
+| 6 | `phaser analytics show --format json` outputs valid JSON | ✅ |
+| 6 | `phaser analytics export` writes to file | ✅ |
+| 6 | `phaser analytics clear --dry-run` shows what would be deleted | ✅ |
+| 6 | `phaser analytics clear --force` deletes without confirmation | ✅ |
+| 6 | `phaser analytics import` imports from report files | ✅ |
+| 6 | 10 CLI tests passing | ✅ |
+| 7 | Full workflow test passes (import → query → export) | ✅ |
+| 7 | Multiple imports aggregate correctly | ✅ |
+| 7 | Clear and reimport workflow works | ✅ |
+| 7 | Query filter combinations work | ✅ |
+| 7 | CLI full workflow test passes | ✅ |
+| 7 | All 131 analytics tests passing | ✅ |
 
 ## Issues Encountered
 
@@ -116,5 +143,5 @@ To undo this entire audit:
 
 ```bash
 git checkout main
-git branch -D fix/v1.6.3-fence-and-cli
+git branch -D audit/2024-12-06-analytics
 ```
