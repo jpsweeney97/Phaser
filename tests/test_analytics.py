@@ -1019,3 +1019,203 @@ class TestReportParsing:
         record1 = import_execution_report(temp_report)
         record2 = import_execution_report(temp_report)
         assert record1.execution_id != record2.execution_id
+
+
+# =============================================================================
+# Query Tests
+# =============================================================================
+
+
+class TestQueryOperations:
+    """Tests for query operations."""
+
+    @pytest.fixture
+    def temp_project(self, tmp_path):
+        """Create a temporary project directory."""
+        project = tmp_path / "TestProject"
+        project.mkdir()
+        return project
+
+    @pytest.fixture
+    def populated_project(self, temp_project):
+        """Create project with sample data."""
+        from tools.analytics import save_execution
+
+        records = [
+            ExecutionRecord(
+                execution_id="success-1",
+                audit_document="doc1.md",
+                document_title="Doc 1",
+                project_name="Test",
+                project_path="/test",
+                branch="b1",
+                started_at=datetime(2024, 12, 1, 10, 0, 0),
+                completed_at=datetime(2024, 12, 1, 11, 0, 0),
+                phaser_version="1.0",
+                status=ExecutionStatus.SUCCESS,
+                phases_planned=3,
+                phases_completed=3,
+                baseline_tests=100,
+                final_tests=120,
+                base_commit="a",
+                final_commit="b",
+                commit_count=3,
+                files_changed=5,
+                phases=[
+                    PhaseRecord(1, "P1", PhaseStatus.COMPLETED, "c1"),
+                    PhaseRecord(2, "P2", PhaseStatus.COMPLETED, "c2"),
+                    PhaseRecord(3, "P3", PhaseStatus.COMPLETED, "c3"),
+                ],
+            ),
+            ExecutionRecord(
+                execution_id="success-2",
+                audit_document="doc2.md",
+                document_title="Doc 2",
+                project_name="Test",
+                project_path="/test",
+                branch="b2",
+                started_at=datetime(2024, 12, 5, 10, 0, 0),
+                completed_at=datetime(2024, 12, 5, 12, 0, 0),
+                phaser_version="1.0",
+                status=ExecutionStatus.SUCCESS,
+                phases_planned=2,
+                phases_completed=2,
+                baseline_tests=120,
+                final_tests=135,
+                base_commit="b",
+                final_commit="c",
+                commit_count=2,
+                files_changed=3,
+            ),
+            ExecutionRecord(
+                execution_id="failed-1",
+                audit_document="doc3.md",
+                document_title="Doc 3",
+                project_name="Test",
+                project_path="/test",
+                branch="b3",
+                started_at=datetime(2024, 12, 10, 10, 0, 0),
+                completed_at=datetime(2024, 12, 10, 10, 30, 0),
+                phaser_version="1.0",
+                status=ExecutionStatus.FAILED,
+                phases_planned=4,
+                phases_completed=1,
+                baseline_tests=135,
+                final_tests=138,
+                base_commit="c",
+                final_commit="d",
+                commit_count=1,
+                files_changed=2,
+                phases=[
+                    PhaseRecord(1, "Setup", PhaseStatus.COMPLETED, "c1"),
+                    PhaseRecord(2, "Build", PhaseStatus.FAILED, None, error_message="Test failed"),
+                    PhaseRecord(3, "Test", PhaseStatus.SKIPPED, None),
+                    PhaseRecord(4, "Deploy", PhaseStatus.SKIPPED, None),
+                ],
+            ),
+        ]
+
+        for record in records:
+            save_execution(record, temp_project)
+
+        return temp_project
+
+    def test_query_executions_all(self, populated_project):
+        """Test querying all executions."""
+        from tools.analytics import query_executions
+        records = query_executions(populated_project)
+        assert len(records) == 3
+
+    def test_query_executions_with_limit(self, populated_project):
+        """Test querying with limit."""
+        from tools.analytics import query_executions
+        query = AnalyticsQuery(limit=2)
+        records = query_executions(populated_project, query)
+        assert len(records) == 2
+
+    def test_query_executions_by_status(self, populated_project):
+        """Test querying by status."""
+        from tools.analytics import query_executions
+        query = AnalyticsQuery(status=ExecutionStatus.SUCCESS)
+        records = query_executions(populated_project, query)
+        assert len(records) == 2
+        assert all(r.status == ExecutionStatus.SUCCESS for r in records)
+
+    def test_query_executions_by_date_range(self, populated_project):
+        """Test querying by date range."""
+        from tools.analytics import query_executions
+        query = AnalyticsQuery(
+            since=datetime(2024, 12, 3),
+            until=datetime(2024, 12, 8),
+        )
+        records = query_executions(populated_project, query)
+        assert len(records) == 1
+        assert records[0].audit_document == "doc2.md"
+
+    def test_query_executions_by_document(self, populated_project):
+        """Test querying by document name."""
+        from tools.analytics import query_executions
+        query = AnalyticsQuery(document="doc1")
+        records = query_executions(populated_project, query)
+        assert len(records) == 1
+        assert records[0].audit_document == "doc1.md"
+
+    def test_query_executions_combined(self, populated_project):
+        """Test combined query parameters."""
+        from tools.analytics import query_executions
+        query = AnalyticsQuery(
+            status=ExecutionStatus.SUCCESS,
+            since=datetime(2024, 12, 1),
+            limit=1,
+        )
+        records = query_executions(populated_project, query)
+        assert len(records) == 1
+
+    def test_query_executions_empty_result(self, populated_project):
+        """Test query with no matches."""
+        from tools.analytics import query_executions
+        query = AnalyticsQuery(document="nonexistent")
+        records = query_executions(populated_project, query)
+        assert records == []
+
+    def test_query_executions_sorted_by_date(self, populated_project):
+        """Test results are sorted by date descending."""
+        from tools.analytics import query_executions
+        records = query_executions(populated_project)
+        dates = [r.started_at for r in records]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_compute_project_stats(self, populated_project):
+        """Test computing project statistics."""
+        from tools.analytics import compute_project_stats
+        stats = compute_project_stats(populated_project)
+        assert stats.total_executions == 3
+        assert stats.successful == 2
+        assert stats.failed == 1
+
+    def test_get_failed_phases(self, populated_project):
+        """Test getting failed phases."""
+        from tools.analytics import get_failed_phases
+        failures = get_failed_phases(populated_project)
+        assert len(failures) == 1
+        assert failures[0] == (2, "Build", 1)
+
+    def test_get_failed_phases_empty(self, temp_project):
+        """Test getting failed phases from empty project."""
+        from tools.analytics import get_failed_phases
+        failures = get_failed_phases(temp_project)
+        assert failures == []
+
+    def test_get_execution_by_document(self, populated_project):
+        """Test getting execution by document name."""
+        from tools.analytics import get_execution_by_document
+        records = get_execution_by_document(populated_project, "doc1")
+        assert len(records) == 1
+        assert records[0].audit_document == "doc1.md"
+
+    def test_get_recent_failures(self, populated_project):
+        """Test getting recent failures."""
+        from tools.analytics import get_recent_failures
+        failures = get_recent_failures(populated_project)
+        assert len(failures) == 1
+        assert failures[0].status == ExecutionStatus.FAILED

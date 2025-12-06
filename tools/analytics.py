@@ -1090,3 +1090,121 @@ def import_execution_report(
         phases=phase_records,
         report_path=str(report_path),
     )
+
+
+# =============================================================================
+# Query and Aggregation
+# =============================================================================
+
+
+def query_executions(
+    project_dir: Path,
+    query: AnalyticsQuery | None = None,
+) -> list[ExecutionRecord]:
+    """
+    Query execution records matching criteria.
+
+    Args:
+        project_dir: Project root directory
+        query: Query parameters (None for all records)
+
+    Returns:
+        List of matching ExecutionRecords, sorted by date descending
+    """
+    if query is None:
+        query = AnalyticsQuery()
+
+    records = list_executions(project_dir)
+
+    # Apply filters
+    filtered = [r for r in records if query.matches(r)]
+
+    # Apply limit
+    if query.limit is not None:
+        filtered = filtered[: query.limit]
+
+    return filtered
+
+
+def compute_project_stats(project_dir: Path) -> AggregatedStats:
+    """
+    Compute statistics for a project.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        AggregatedStats for all executions
+    """
+    records = list_executions(project_dir)
+    return AggregatedStats.compute(records)
+
+
+def get_failed_phases(
+    project_dir: Path,
+) -> list[tuple[int, str, int]]:
+    """
+    Get phases that have failed across all executions.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        List of (phase_number, title, failure_count) tuples,
+        sorted by failure count descending
+    """
+    records = list_executions(project_dir)
+    failures: dict[tuple[int, str], int] = {}
+
+    for record in records:
+        for phase in record.phases:
+            if phase.status == PhaseStatus.FAILED:
+                key = (phase.phase_number, phase.title)
+                failures[key] = failures.get(key, 0) + 1
+
+    # Sort by failure count descending
+    sorted_failures = sorted(
+        [(num, title, count) for (num, title), count in failures.items()],
+        key=lambda x: x[2],
+        reverse=True,
+    )
+
+    return sorted_failures
+
+
+def get_execution_by_document(
+    project_dir: Path,
+    document_name: str,
+    latest_only: bool = True,
+) -> list[ExecutionRecord]:
+    """
+    Get executions for a specific document.
+
+    Args:
+        project_dir: Project root directory
+        document_name: Document name to filter by
+        latest_only: If True, return only the most recent
+
+    Returns:
+        List of matching ExecutionRecords
+    """
+    query = AnalyticsQuery(document=document_name, limit=1 if latest_only else None)
+    return query_executions(project_dir, query)
+
+
+def get_recent_failures(
+    project_dir: Path,
+    limit: int = 5,
+) -> list[ExecutionRecord]:
+    """
+    Get recent failed executions.
+
+    Args:
+        project_dir: Project root directory
+        limit: Maximum number to return
+
+    Returns:
+        List of failed ExecutionRecords
+    """
+    query = AnalyticsQuery(status=ExecutionStatus.FAILED, limit=limit)
+    return query_executions(project_dir, query)
