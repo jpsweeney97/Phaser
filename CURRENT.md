@@ -1,5 +1,16 @@
-# Current Phase
+# Code Block Detection Fix Progress
 
-No active audit.
+## Status: IN PROGRESS
 
-Last completed: v1.5.0 (Phases 1-47)
+## Phases
+
+- [x] Phase 1: Fix find_code_block_ranges Function
+- [ ] Phase 2: Add Edge Case Tests
+
+## Current Phase: 2
+
+## Notes
+
+Started: 2024-12-06
+Bug: Regex-based code block detection fails on nested backticks
+Fix: State-based line tracking
