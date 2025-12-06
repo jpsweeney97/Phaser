@@ -874,3 +874,119 @@ def validate_document(
         phase_range=phase_range,
         token_estimates=token_estimates,
     )
+
+
+# =============================================================================
+# File Generation Functions
+# =============================================================================
+
+
+def create_setup_file_content(content: str) -> str:
+    """
+    Create setup.md content by combining Prerequisites + setup block.
+
+    Args:
+        content: Full document content
+
+    Returns:
+        Combined content for setup.md (Prerequisites + setup block)
+    """
+    prereq = extract_prerequisites(content) or ""
+    setup_block = extract_setup_block(content)
+
+    if prereq:
+        return prereq + "\n\n---\n\n" + setup_block
+    return setup_block
+
+
+def calculate_zero_padding(max_phase: int) -> int:
+    """
+    Calculate zero-padding width based on maximum phase number.
+
+    Args:
+        max_phase: Highest phase number in document
+
+    Returns:
+        Number of digits to pad to
+    """
+    return len(str(max_phase))
+
+
+def write_phase_file(phase: Phase, output_path: Path) -> None:
+    """
+    Write a single phase to a file.
+
+    Args:
+        phase: Parsed phase
+        output_path: Target file path
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(phase.raw_content)
+
+
+def write_metadata(project_dir: Path, baseline_tests: int) -> Path:
+    """
+    Write metadata files for execution tracking.
+
+    Args:
+        project_dir: Project directory
+        baseline_tests: Baseline test count from Prerequisites
+
+    Returns:
+        Path to .audit-meta/ directory
+    """
+    meta_dir = project_dir / ".audit-meta"
+    meta_dir.mkdir(parents=True, exist_ok=True)
+
+    # Phaser version
+    (meta_dir / "phaser-version").write_text(PHASER_VERSION)
+
+    # Baseline test count
+    (meta_dir / "baseline-tests").write_text(str(baseline_tests))
+
+    # Note: base-commit is written by setup.md execution
+
+    return meta_dir
+
+
+def split_document(
+    document: AuditDocument,
+    output_dir: Path,
+    project_dir: Path,
+) -> tuple[Path, list[Path], Path]:
+    """
+    Split document into individual phase files.
+
+    Args:
+        document: Parsed audit document
+        output_dir: Directory for phase files (created if needed)
+        project_dir: Project root directory
+
+    Returns:
+        Tuple of (setup_file, phase_files, meta_dir)
+    """
+    # Create directories
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write setup.md
+    setup_content = create_setup_file_content(document.raw_content)
+    setup_file = output_dir / "setup.md"
+    setup_file.write_text(setup_content)
+
+    # Calculate zero-padding
+    max_phase = max(p.number for p in document.phases) if document.phases else 0
+    padding = calculate_zero_padding(max_phase)
+
+    # Write phase files
+    phase_files = []
+    for phase in document.phases:
+        filename = f"phase-{str(phase.number).zfill(padding)}.md"
+        phase_path = output_dir / filename
+        write_phase_file(phase, phase_path)
+        phase_files.append(phase_path)
+
+    # Write metadata
+    baseline = parse_baseline_test_count(document.prerequisites)
+    meta_dir = write_metadata(project_dir, baseline)
+
+    return setup_file, phase_files, meta_dir
