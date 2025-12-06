@@ -589,3 +589,288 @@ def parse_audit_document(content: str, source_path: Path | None = None) -> Audit
         completion_block=extract_completion_block(content),
         raw_content=content,
     )
+
+
+# =============================================================================
+# Validation Functions
+# =============================================================================
+
+
+def validate_phase(phase: Phase) -> list[ValidationIssue]:
+    """
+    Validate a single phase.
+
+    Args:
+        phase: Parsed phase
+
+    Returns:
+        List of validation issues (errors and warnings)
+    """
+    issues = []
+    n = phase.number
+    line = phase.line_start
+
+    # Required sections (errors)
+    required_sections = [
+        ("Context", phase.context),
+        ("Goal", phase.goal),
+        ("Files", len(phase.files) > 0 or "### Files" in phase.raw_content),
+        ("Implementation", phase.implementation),
+        ("Verify", phase.verify),
+        ("Completion", phase.completion),
+    ]
+
+    for section_name, has_content in required_sections:
+        if not has_content:
+            issues.append(
+                ValidationIssue(
+                    level="error",
+                    phase=n,
+                    line=line,
+                    message=f"Phase {n} missing required section: {section_name}",
+                )
+            )
+
+    # Recommended sections (warnings)
+    recommended_sections = [
+        ("Plan", len(phase.plan) > 0),
+        ("Acceptance Criteria", len(phase.acceptance_criteria) > 0),
+        ("Rollback", phase.rollback),
+    ]
+
+    for section_name, has_content in recommended_sections:
+        if not has_content:
+            issues.append(
+                ValidationIssue(
+                    level="warning",
+                    phase=n,
+                    line=line,
+                    message=f"Phase {n} missing section: {section_name}",
+                )
+            )
+
+    # Token count validation
+    tokens = phase.estimated_tokens
+    if tokens >= TOKEN_ERROR_THRESHOLD:
+        issues.append(
+            ValidationIssue(
+                level="error",
+                phase=n,
+                line=line,
+                message=f"Phase {n} is ~{tokens:,} tokens (limit: 25,000). Must split phase.",
+            )
+        )
+    elif tokens >= TOKEN_WARNING_THRESHOLD:
+        issues.append(
+            ValidationIssue(
+                level="warning",
+                phase=n,
+                line=line,
+                message=f"Phase {n} is ~{tokens:,} tokens. Consider splitting if issues occur.",
+            )
+        )
+
+    # Code block language identifiers
+    code_block_pattern = re.compile(r"```(\w*)\n", re.MULTILINE)
+    for i, match in enumerate(code_block_pattern.finditer(phase.raw_content)):
+        if not match.group(1):
+            # Find approximate line number
+            block_line = phase.raw_content[: match.start()].count("\n") + line
+            issues.append(
+                ValidationIssue(
+                    level="warning",
+                    phase=n,
+                    line=block_line,
+                    message=f"Phase {n}: Code block missing language identifier",
+                )
+            )
+
+    # Verify section should have Expected comments
+    if phase.verify and "# Expected:" not in phase.verify:
+        issues.append(
+            ValidationIssue(
+                level="warning",
+                phase=n,
+                line=line,
+                message=f"Phase {n}: Verify section missing '# Expected:' comments",
+            )
+        )
+
+    return issues
+
+
+def validate_document(
+    content: str, source_path: Path | None = None
+) -> ValidationResult:
+    """
+    Validate an audit document structure and content.
+
+    Args:
+        content: Raw markdown content
+        source_path: Original file path (for error messages)
+
+    Returns:
+        ValidationResult with errors and warnings
+    """
+    errors: list[ValidationIssue] = []
+    warnings: list[ValidationIssue] = []
+    token_estimates: dict[str, int] = {}
+
+    source_str = str(source_path) if source_path else None
+
+    # Document header check
+    header_match = DOCUMENT_HEADER_PATTERN.search(content)
+    if not header_match:
+        warnings.append(
+            ValidationIssue(
+                level="warning",
+                phase=None,
+                line=1,
+                message="Missing document header. Expected '# Document N: Title'",
+            )
+        )
+        doc_title = None
+    else:
+        doc_title = f"Document {header_match.group(1)}: {header_match.group(2).strip()}"
+
+    # Document Overview check
+    if "## Document Overview" not in content:
+        warnings.append(
+            ValidationIssue(
+                level="warning",
+                phase=None,
+                line=None,
+                message="Missing Document Overview section",
+            )
+        )
+
+    # Prerequisites check
+    prerequisites = extract_prerequisites(content)
+    if not prerequisites:
+        warnings.append(
+            ValidationIssue(
+                level="warning",
+                phase=None,
+                line=None,
+                message="Missing Prerequisites section",
+            )
+        )
+    else:
+        # Check if baseline test count is parseable
+        baseline = parse_baseline_test_count(prerequisites)
+        if baseline == 0:
+            warnings.append(
+                ValidationIssue(
+                    level="warning",
+                    phase=None,
+                    line=None,
+                    message="Could not parse baseline test count from Prerequisites. Report will show 0 baseline tests.",
+                )
+            )
+
+    # Setup block markers check
+    if SETUP_START_MARKER not in content:
+        errors.append(
+            ValidationIssue(
+                level="error",
+                phase=None,
+                line=None,
+                message=f"Setup block not found. Expected '{SETUP_START_MARKER}' marker.",
+            )
+        )
+    elif SETUP_END_MARKER not in content:
+        errors.append(
+            ValidationIssue(
+                level="error",
+                phase=None,
+                line=None,
+                message=f"Setup block not closed. Expected '{SETUP_END_MARKER}' marker.",
+            )
+        )
+
+    # Phase detection
+    boundaries = detect_phase_boundaries(content)
+    if not boundaries:
+        errors.append(
+            ValidationIssue(
+                level="error",
+                phase=None,
+                line=None,
+                message="No phases found. Expected '## Phase N:' headers.",
+            )
+        )
+        phase_count = 0
+        phase_range = None
+    else:
+        phase_count = len(boundaries)
+        phase_range = f"{boundaries[0][0]}-{boundaries[-1][0]}"
+
+        # Check for sequential phases
+        phase_nums = [b[0] for b in boundaries]
+        for i in range(1, len(phase_nums)):
+            if phase_nums[i] != phase_nums[i - 1] + 1:
+                gap_start = phase_nums[i - 1]
+                gap_end = phase_nums[i]
+                missing = list(range(gap_start + 1, gap_end))
+                warnings.append(
+                    ValidationIssue(
+                        level="warning",
+                        phase=None,
+                        line=None,
+                        message=f"Phase gap detected: {gap_start} to {gap_end}. Missing phases: {missing}",
+                    )
+                )
+
+        # Validate each phase
+        total_tokens = 0
+        for phase_num, start_idx, end_idx in boundaries:
+            phase_content = content[start_idx:end_idx].rstrip()
+            line_start = content[:start_idx].count("\n") + 1
+
+            try:
+                phase = parse_phase(phase_content, line_start)
+                phase_issues = validate_phase(phase)
+
+                for issue in phase_issues:
+                    if issue.level == "error":
+                        errors.append(issue)
+                    else:
+                        warnings.append(issue)
+
+                tokens = phase.estimated_tokens
+                token_estimates[f"phase_{phase_num}"] = tokens
+                total_tokens += tokens
+
+            except ParseError as e:
+                errors.append(
+                    ValidationIssue(
+                        level="error",
+                        phase=phase_num,
+                        line=line_start,
+                        message=f"Failed to parse Phase {phase_num}: {e}",
+                    )
+                )
+
+        token_estimates["total"] = total_tokens
+
+    # Document Completion check
+    if "## Document Completion" not in content:
+        warnings.append(
+            ValidationIssue(
+                level="warning",
+                phase=None,
+                line=None,
+                message="Missing Document Completion section",
+            )
+        )
+
+    return ValidationResult(
+        valid=len(errors) == 0,
+        errors=errors,
+        warnings=warnings,
+        source_path=source_str,
+        document_title=doc_title,
+        phase_count=phase_count,
+        phase_range=phase_range,
+        token_estimates=token_estimates,
+    )
