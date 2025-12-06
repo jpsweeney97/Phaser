@@ -19,7 +19,7 @@ from typing import Any
 # Constants
 # =============================================================================
 
-PHASER_VERSION = "1.6.3"
+PHASER_VERSION = "1.7.0"
 
 SETUP_START_MARKER = "=== AUDIT SETUP START ==="
 SETUP_END_MARKER = "=== AUDIT SETUP END ==="
