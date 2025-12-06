@@ -19,7 +19,7 @@ from typing import Any
 # Constants
 # =============================================================================
 
-PHASER_VERSION = "1.6.2"
+PHASER_VERSION = "1.6.3"
 
 SETUP_START_MARKER = "=== AUDIT SETUP START ==="
 SETUP_END_MARKER = "=== AUDIT SETUP END ==="
@@ -368,12 +368,61 @@ def extract_completion_block(content: str) -> str | None:
     return None
 
 
+def detect_fence_marker(line: str) -> tuple[str, int] | None:
+    """
+    Detect if a line is a code fence marker.
+
+    Per CommonMark spec, a code fence is:
+    - 3+ backticks (`) or tildes (~)
+    - Optionally followed by info string (language identifier)
+    - May have up to 3 spaces of indentation
+
+    Args:
+        line: A single line of text
+
+    Returns:
+        Tuple of (fence_char, fence_length) if this is a fence, None otherwise
+    """
+    # Strip up to 3 leading spaces (CommonMark allows this)
+    stripped = line.lstrip()
+    if len(line) - len(stripped) > 3:
+        # More than 3 spaces of indentation - not a fence
+        return None
+
+    # Check for backtick fence
+    if stripped.startswith('```'):
+        fence_len = 0
+        for char in stripped:
+            if char == '`':
+                fence_len += 1
+            else:
+                break
+        return ('`', fence_len)
+
+    # Check for tilde fence
+    if stripped.startswith('~~~'):
+        fence_len = 0
+        for char in stripped:
+            if char == '~':
+                fence_len += 1
+            else:
+                break
+        return ('~', fence_len)
+
+    return None
+
+
 def find_code_block_ranges(content: str) -> list[tuple[int, int]]:
     """
-    Find all fenced code block ranges using state tracking.
+    Find all fenced code block ranges using fence-aware matching.
 
-    Uses line-by-line state tracking instead of regex to correctly handle
-    nested backticks, code examples containing markdown, and other edge cases.
+    Per CommonMark spec:
+    - Opening fence: 3+ backticks or tildes
+    - Closing fence: same character, >= length of opening fence
+    - Fences must use same character (can't open with ``` and close with ~~~)
+
+    This correctly handles code blocks containing triple backticks in
+    string literals, nested markdown examples, etc.
 
     Args:
         content: Document content
@@ -383,23 +432,33 @@ def find_code_block_ranges(content: str) -> list[tuple[int, int]]:
     """
     ranges = []
     lines = content.split('\n')
+
     in_block = False
     block_start = 0
+    open_fence_char = None
+    open_fence_len = 0
     current_pos = 0
 
     for line in lines:
-        # Check if line starts with ``` (fence marker)
-        stripped = line.lstrip()
-        if stripped.startswith('```'):
+        fence = detect_fence_marker(line)
+
+        if fence is not None:
+            fence_char, fence_len = fence
+
             if not in_block:
-                # Entering a code block
+                # Opening a new code block
                 in_block = True
                 block_start = current_pos
-            else:
-                # Exiting a code block
+                open_fence_char = fence_char
+                open_fence_len = fence_len
+            elif fence_char == open_fence_char and fence_len >= open_fence_len:
+                # Closing the current code block (matching fence)
                 in_block = False
                 block_end = current_pos + len(line)
                 ranges.append((block_start, block_end))
+                open_fence_char = None
+                open_fence_len = 0
+            # else: fence inside block but doesn't match - ignore it
 
         current_pos += len(line) + 1  # +1 for newline
 

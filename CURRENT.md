@@ -1,16 +1,18 @@
-# Code Block Detection Fix Progress
+# v1.6.3 Bug Fixes Progress
 
 ## Status: IN PROGRESS
 
 ## Phases
 
-- [x] Phase 1: Fix find_code_block_ranges Function
-- [x] Phase 2: Add Edge Case Tests
+- [x] Phase 1: Fix find_code_block_ranges with Fence Matching
+- [ ] Phase 2: Fix launch_claude_code CLI Function
+- [ ] Phase 3: Add Tests
 
-## Current Phase: COMPLETE
+## Current Phase: 2
 
 ## Notes
 
 Started: 2024-12-06
-Bug: Regex-based code block detection fails on nested backticks
-Fix: State-based line tracking
+Fixes:
+1. Fence-aware code block detection (CommonMark spec)
+2. CLI launch uses interactive REPL instead of print mode
