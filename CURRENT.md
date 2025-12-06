@@ -5,9 +5,9 @@
 ## Phases
 
 - [x] Phase 1: Fix find_code_block_ranges Function
-- [ ] Phase 2: Add Edge Case Tests
+- [x] Phase 2: Add Edge Case Tests
 
-## Current Phase: 2
+## Current Phase: COMPLETE
 
 ## Notes
 
