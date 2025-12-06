@@ -19,7 +19,7 @@ from typing import Any
 # Constants
 # =============================================================================
 
-PHASER_VERSION = "1.6.0"
+PHASER_VERSION = "1.6.1"
 
 SETUP_START_MARKER = "=== AUDIT SETUP START ==="
 SETUP_END_MARKER = "=== AUDIT SETUP END ==="
@@ -368,9 +368,41 @@ def extract_completion_block(content: str) -> str | None:
     return None
 
 
+def find_code_block_ranges(content: str) -> list[tuple[int, int]]:
+    """
+    Find all fenced code block ranges in content.
+
+    Args:
+        content: Document content
+
+    Returns:
+        List of (start, end) tuples for each code block
+    """
+    ranges = []
+    # Match fenced code blocks (``` with optional language identifier)
+    pattern = re.compile(r"```[^\n]*\n.*?```", re.DOTALL)
+    for match in pattern.finditer(content):
+        ranges.append((match.start(), match.end()))
+    return ranges
+
+
+def is_inside_code_block(pos: int, code_block_ranges: list[tuple[int, int]]) -> bool:
+    """
+    Check if a position is inside any code block.
+
+    Args:
+        pos: Position in content
+        code_block_ranges: List of (start, end) tuples from find_code_block_ranges
+
+    Returns:
+        True if position is inside a code block
+    """
+    return any(start <= pos < end for start, end in code_block_ranges)
+
+
 def detect_phase_boundaries(content: str) -> list[tuple[int, int, int]]:
     """
-    Detect phase boundaries in document.
+    Detect phase boundaries in document, ignoring patterns inside code blocks.
 
     Args:
         content: Full document content
@@ -378,20 +410,30 @@ def detect_phase_boundaries(content: str) -> list[tuple[int, int, int]]:
     Returns:
         List of (phase_number, start_index, end_index) tuples
     """
+    # Find all code block ranges first
+    code_block_ranges = find_code_block_ranges(content)
+
     boundaries = []
     matches = list(PHASE_HEADER_PATTERN.finditer(content))
 
-    for i, match in enumerate(matches):
+    # Filter out matches that are inside code blocks
+    real_matches = [
+        m for m in matches if not is_inside_code_block(m.start(), code_block_ranges)
+    ]
+
+    for i, match in enumerate(real_matches):
         phase_num = int(match.group(1))
         start_idx = match.start()
 
         # End is either next phase, Document Completion, or end of content
-        if i + 1 < len(matches):
-            end_idx = matches[i + 1].start()
+        if i + 1 < len(real_matches):
+            end_idx = real_matches[i + 1].start()
         else:
             # Check for Document Completion
             completion_match = COMPLETION_HEADER_PATTERN.search(content, start_idx)
-            if completion_match:
+            if completion_match and not is_inside_code_block(
+                completion_match.start(), code_block_ranges
+            ):
                 end_idx = completion_match.start()
             else:
                 end_idx = len(content)

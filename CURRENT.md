@@ -1,23 +1,15 @@
-# Audit Bridge Progress
+# Parser Code Block Fix Progress
 
 ## Status: IN PROGRESS
 
 ## Phases
 
-- [x] Phase 1: Foundation - Error Types and Enums
-- [x] Phase 2: Core Data Classes
-- [x] Phase 3: Parsing Functions
-- [x] Phase 4: Validation Functions
-- [x] Phase 5: File Generation Functions
-- [x] Phase 6: Prompt Generation
-- [x] Phase 7: Execution Functions
-- [x] Phase 8: CLI Commands
-- [x] Phase 9: Parsing and Validation Tests
-- [x] Phase 10: CLI and Integration Tests
+- [x] Phase 1: Fix detect_phase_boundaries Function
+- [ ] Phase 2: Add Regression Tests
 
-## Current Phase: COMPLETE
+## Current Phase: 2
 
 ## Notes
 
-Started: 2024-12-05
-Feature: Audit Bridge (v1.6)
+Started: 2024-12-06
+Bug: Parser detects ## Phase N: inside code blocks as real phases
