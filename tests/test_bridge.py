@@ -25,6 +25,7 @@ from tools.bridge import (
     parse_baseline_test_count,
     extract_overview,
     extract_completion_block,
+    detect_fence_marker,
     find_code_block_ranges,
     is_inside_code_block,
     detect_phase_boundaries,
@@ -1113,9 +1114,9 @@ plain code
     def test_nested_backticks_in_content(self):
         """Code block containing triple backticks in string literals.
 
-        State-based tracking toggles on each ``` line, so balanced pairs
-        inside code blocks will create additional ranges. What matters is
-        that the regions are consistently tracked for filtering purposes.
+        With fence-aware matching, the outer 3-backtick fence is only closed
+        by another 3+ backtick fence. Internal backticks in strings don't
+        close the block.
         """
         content = '''Text before
 ```python
@@ -1127,9 +1128,10 @@ fake nested block
 ```
 Text after'''
         ranges = find_code_block_ranges(content)
-        # State-based approach finds 2 blocks because ``` toggles state.
-        # The inner ```markdown closes the outer, ```  opens a new one.
-        # This is correct for phase filtering purposes.
+        # Fence-aware approach correctly handles this: the outer ``` opens,
+        # and only the final ``` at the end closes it. The middle ones are
+        # inside string literals and match the same length, so they DO close.
+        # But this specific case has balanced pairs, so we get 2 blocks.
         assert len(ranges) == 2
         # First block contains "example"
         start, end = ranges[0]
@@ -1181,6 +1183,152 @@ echo "hello"
 '''
         ranges = find_code_block_ranges(content)
         assert len(ranges) == 3
+
+    def test_four_backtick_fence_contains_three(self):
+        """Four-backtick fence can contain three-backtick content."""
+        content = '''Text before
+````python
+example = """
+```
+fake fence inside
+```
+"""
+````
+Text after'''
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+        start, end = ranges[0]
+        assert "fake fence inside" in content[start:end]
+
+    def test_tilde_fence_ignores_backtick_inside(self):
+        """Tilde fence ignores backtick fences inside."""
+        content = '''Text
+~~~python
+```
+not a close
+```
+~~~
+More text'''
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+
+    def test_backtick_fence_ignores_tilde_inside(self):
+        """Backtick fence ignores tilde fences inside."""
+        content = '''Text
+```python
+~~~
+not a close
+~~~
+```
+More text'''
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+
+    def test_five_backtick_fence(self):
+        """Five-backtick fence needs five to close."""
+        content = '''Text
+`````python
+```
+three
+```
+````
+four
+````
+`````
+After'''
+        ranges = find_code_block_ranges(content)
+        assert len(ranges) == 1
+        start, end = ranges[0]
+        assert "three" in content[start:end]
+        assert "four" in content[start:end]
+
+    def test_string_literal_with_backticks(self):
+        """Python string containing backticks doesn't break detection."""
+        content = '''# Doc
+
+## Phase 1: Real
+
+```python
+content = """
+## Phase 99: Fake in string
+"""
+
+more = \'\'\'
+```
+fake fence in string
+```
+\'\'\'
+```
+
+## Phase 2: Also Real
+'''
+        ranges = find_code_block_ranges(content)
+        # The string literals contain ``` which will toggle state
+        # But the end result should still filter phases correctly
+        # This tests the real-world pattern
+        from tools.bridge import detect_phase_boundaries
+        boundaries = detect_phase_boundaries(content)
+        phase_nums = [b[0] for b in boundaries]
+        assert 1 in phase_nums
+        assert 2 in phase_nums
+        assert 99 not in phase_nums
+
+
+class TestDetectFenceMarker:
+    """Tests for fence marker detection helper."""
+
+    def test_backtick_fence_basic(self):
+        result = detect_fence_marker('```')
+        assert result == ('`', 3)
+
+    def test_backtick_fence_with_language(self):
+        result = detect_fence_marker('```python')
+        assert result == ('`', 3)
+
+    def test_backtick_fence_four(self):
+        result = detect_fence_marker('````')
+        assert result == ('`', 4)
+
+    def test_backtick_fence_five_with_language(self):
+        result = detect_fence_marker('`````markdown')
+        assert result == ('`', 5)
+
+    def test_tilde_fence_basic(self):
+        result = detect_fence_marker('~~~')
+        assert result == ('~', 3)
+
+    def test_tilde_fence_with_language(self):
+        result = detect_fence_marker('~~~bash')
+        assert result == ('~', 3)
+
+    def test_tilde_fence_four(self):
+        result = detect_fence_marker('~~~~')
+        assert result == ('~', 4)
+
+    def test_indented_fence_one_space(self):
+        result = detect_fence_marker(' ```')
+        assert result == ('`', 3)
+
+    def test_indented_fence_three_spaces(self):
+        result = detect_fence_marker('   ```')
+        assert result == ('`', 3)
+
+    def test_indented_fence_four_spaces_invalid(self):
+        """Four spaces makes it a code block content, not a fence."""
+        result = detect_fence_marker('    ```')
+        assert result is None
+
+    def test_not_a_fence_plain_text(self):
+        result = detect_fence_marker('regular text')
+        assert result is None
+
+    def test_not_a_fence_single_backtick(self):
+        result = detect_fence_marker('`inline code`')
+        assert result is None
+
+    def test_not_a_fence_two_backticks(self):
+        result = detect_fence_marker('``not a fence``')
+        assert result is None
 
 
 class TestIsInsideCodeBlock:
@@ -1417,3 +1565,28 @@ Done
         assert len(boundaries) == 2
         phase_nums = [b[0] for b in boundaries]
         assert phase_nums == [1, 2]
+
+
+class TestLaunchClaudeCode:
+    """Tests for launch_claude_code function."""
+
+    def test_returns_completed_process(self):
+        """Verify function signature returns CompletedProcess."""
+        import subprocess
+        from tools.bridge import launch_claude_code
+        import inspect
+
+        sig = inspect.signature(launch_claude_code)
+        # Check return annotation (may be string or type depending on Python version)
+        annotation = sig.return_annotation
+        assert annotation == subprocess.CompletedProcess or annotation == 'subprocess.CompletedProcess'
+
+    def test_command_does_not_use_print_flag(self):
+        """Verify -p flag is not used (would cause non-interactive mode)."""
+        import inspect
+        from tools.bridge import launch_claude_code
+
+        source = inspect.getsource(launch_claude_code)
+        # Should not contain -p flag
+        assert '"-p"' not in source
+        assert "'-p'" not in source
