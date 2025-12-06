@@ -253,3 +253,339 @@ class PrepareResult:
             "phase_files": [str(p) for p in self.phase_files],
             "audit_copy": str(self.audit_copy) if self.audit_copy else None,
         }
+
+
+# =============================================================================
+# Parsing Functions
+# =============================================================================
+
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count. Conservative: 1 token per 3.5 characters."""
+    return int(len(text) / 3.5)
+
+
+def extract_setup_block(content: str) -> str:
+    """
+    Extract setup block content between markers.
+
+    Args:
+        content: Full document content
+
+    Returns:
+        Setup block content (including markers)
+
+    Raises:
+        ParseError: If markers not found
+    """
+    start_idx = content.find(SETUP_START_MARKER)
+    if start_idx == -1:
+        raise ParseError(
+            f"Setup block not found. Expected '{SETUP_START_MARKER}' marker."
+        )
+
+    end_idx = content.find(SETUP_END_MARKER)
+    if end_idx == -1:
+        raise ParseError(
+            f"Setup block not closed. Expected '{SETUP_END_MARKER}' marker."
+        )
+
+    return content[start_idx : end_idx + len(SETUP_END_MARKER)]
+
+
+def extract_prerequisites(content: str) -> str | None:
+    """
+    Extract Prerequisites section content.
+
+    Args:
+        content: Full document content
+
+    Returns:
+        Prerequisites content, or None if not found
+    """
+    pattern = re.compile(
+        r"^## Prerequisites\s*\n(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL
+    )
+    match = pattern.search(content)
+    if match:
+        return match.group(0).strip()
+    return None
+
+
+def parse_baseline_test_count(prerequisites: str | None) -> int:
+    """
+    Parse the baseline test count from Prerequisites section.
+
+    Args:
+        prerequisites: Prerequisites section content
+
+    Returns:
+        Baseline test count (0 if not found or unparseable)
+    """
+    if not prerequisites:
+        return 0
+
+    # Look for patterns like "280+ passed" or "Expected: 280+ passed"
+    pattern = re.compile(r"(\d+)\+?\s*passed", re.IGNORECASE)
+    match = pattern.search(prerequisites)
+    if match:
+        return int(match.group(1))
+    return 0
+
+
+def extract_overview(content: str) -> str | None:
+    """
+    Extract Document Overview section content.
+
+    Args:
+        content: Full document content
+
+    Returns:
+        Overview content, or None if not found
+    """
+    pattern = re.compile(
+        r"^## Document Overview\s*\n(.*?)(?=^## |\n---|\Z)", re.MULTILINE | re.DOTALL
+    )
+    match = pattern.search(content)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def extract_completion_block(content: str) -> str | None:
+    """
+    Extract Document Completion section content.
+
+    Args:
+        content: Full document content
+
+    Returns:
+        Completion content, or None if not found
+    """
+    match = COMPLETION_HEADER_PATTERN.search(content)
+    if match:
+        return content[match.start() :].strip()
+    return None
+
+
+def detect_phase_boundaries(content: str) -> list[tuple[int, int, int]]:
+    """
+    Detect phase boundaries in document.
+
+    Args:
+        content: Full document content
+
+    Returns:
+        List of (phase_number, start_index, end_index) tuples
+    """
+    boundaries = []
+    matches = list(PHASE_HEADER_PATTERN.finditer(content))
+
+    for i, match in enumerate(matches):
+        phase_num = int(match.group(1))
+        start_idx = match.start()
+
+        # End is either next phase, Document Completion, or end of content
+        if i + 1 < len(matches):
+            end_idx = matches[i + 1].start()
+        else:
+            # Check for Document Completion
+            completion_match = COMPLETION_HEADER_PATTERN.search(content, start_idx)
+            if completion_match:
+                end_idx = completion_match.start()
+            else:
+                end_idx = len(content)
+
+        boundaries.append((phase_num, start_idx, end_idx))
+
+    return boundaries
+
+
+def parse_files_table(content: str) -> list[PhaseFile]:
+    """
+    Parse the Files table from phase content.
+
+    Args:
+        content: Phase content containing Files section
+
+    Returns:
+        List of PhaseFile objects
+    """
+    files = []
+
+    # Find the Files section
+    files_match = re.search(
+        r"### Files\s*\n(.*?)(?=^### |\Z)", content, re.MULTILINE | re.DOTALL
+    )
+    if not files_match:
+        return files
+
+    table_content = files_match.group(1)
+
+    # Parse table rows (skip header and separator)
+    row_pattern = re.compile(r"\|\s*`?([^`|]+)`?\s*\|\s*(\w+)\s*\|\s*([^|]+)\s*\|")
+    for match in row_pattern.finditer(table_content):
+        path = match.group(1).strip()
+        action_str = match.group(2).strip().upper()
+        purpose = match.group(3).strip()
+
+        # Skip header row
+        if path.lower() in ("file", "---", "------"):
+            continue
+
+        try:
+            action = FileAction(action_str)
+            files.append(PhaseFile(path=path, action=action, purpose=purpose))
+        except ValueError:
+            # Invalid action, skip
+            pass
+
+    return files
+
+
+def parse_section(content: str, section_name: str) -> str:
+    """
+    Parse a specific section from phase content.
+
+    Args:
+        content: Phase content
+        section_name: Name of section (e.g., "Context", "Goal")
+
+    Returns:
+        Section content, or empty string if not found
+    """
+    pattern = re.compile(
+        rf"^### {section_name}\s*\n(.*?)(?=^### |\Z)", re.MULTILINE | re.DOTALL
+    )
+    match = pattern.search(content)
+    if match:
+        return match.group(1).strip()
+    return ""
+
+
+def parse_acceptance_criteria(content: str) -> list[str]:
+    """
+    Parse acceptance criteria checkboxes from phase content.
+
+    Args:
+        content: Phase content
+
+    Returns:
+        List of criteria strings
+    """
+    criteria = []
+    section = parse_section(content, "Acceptance Criteria")
+    if section:
+        # Match checkbox items
+        pattern = re.compile(r"^- \[[ x]\]\s*(.+)$", re.MULTILINE)
+        for match in pattern.finditer(section):
+            criteria.append(match.group(1).strip())
+    return criteria
+
+
+def parse_plan_steps(content: str) -> list[str]:
+    """
+    Parse numbered plan steps from phase content.
+
+    Args:
+        content: Phase content
+
+    Returns:
+        List of step strings
+    """
+    steps = []
+    section = parse_section(content, "Plan")
+    if section:
+        # Match numbered items
+        pattern = re.compile(r"^\d+\.\s*(.+)$", re.MULTILINE)
+        for match in pattern.finditer(section):
+            steps.append(match.group(1).strip())
+    return steps
+
+
+def parse_phase(content: str, line_start: int = 0) -> Phase:
+    """
+    Parse a single phase from its raw content.
+
+    Args:
+        content: Raw phase content (starting with ## Phase N:)
+        line_start: Line number where this phase starts in original document
+
+    Returns:
+        Parsed Phase
+
+    Raises:
+        ParseError: If phase header is invalid
+    """
+    # Extract phase number and title from header
+    header_match = PHASE_HEADER_PATTERN.search(content)
+    if not header_match:
+        raise ParseError("Invalid phase header", line_start)
+
+    phase_num = int(header_match.group(1))
+    title = header_match.group(2).strip()
+
+    return Phase(
+        number=phase_num,
+        title=title,
+        context=parse_section(content, "Context"),
+        goal=parse_section(content, "Goal"),
+        files=parse_files_table(content),
+        plan=parse_plan_steps(content),
+        implementation=parse_section(content, "Implementation"),
+        verify=parse_section(content, "Verify"),
+        acceptance_criteria=parse_acceptance_criteria(content),
+        rollback=parse_section(content, "Rollback"),
+        completion=parse_section(content, "Completion"),
+        raw_content=content,
+        line_start=line_start,
+    )
+
+
+def parse_audit_document(content: str, source_path: Path | None = None) -> AuditDocument:
+    """
+    Parse an audit document into structured form.
+
+    Args:
+        content: Raw markdown content
+        source_path: Original file path (for error messages)
+
+    Returns:
+        Parsed AuditDocument
+
+    Raises:
+        ParseError: If document structure is invalid
+    """
+    # Extract document header
+    header_match = DOCUMENT_HEADER_PATTERN.search(content)
+    if not header_match:
+        raise ParseError("Missing document header. Expected '# Document N: Title'")
+
+    doc_number = int(header_match.group(1))
+    doc_title = f"Document {doc_number}: {header_match.group(2).strip()}"
+
+    # Extract setup block (required)
+    setup_block = extract_setup_block(content)
+
+    # Detect and parse phases
+    boundaries = detect_phase_boundaries(content)
+    if not boundaries:
+        raise ParseError("No phases found. Expected '## Phase N:' headers.")
+
+    phases = []
+    for phase_num, start_idx, end_idx in boundaries:
+        phase_content = content[start_idx:end_idx].rstrip()
+        line_start = content[:start_idx].count("\n") + 1
+        phases.append(parse_phase(phase_content, line_start))
+
+    return AuditDocument(
+        title=doc_title,
+        document_number=doc_number,
+        source_path=source_path,
+        overview=extract_overview(content),
+        prerequisites=extract_prerequisites(content),
+        phases=phases,
+        setup_block=setup_block,
+        completion_block=extract_completion_block(content),
+        raw_content=content,
+    )
