@@ -1144,3 +1144,191 @@ def generate_execution_prompt(
         document_name=document.title,
         source_filename=source_filename,
     )
+
+
+# =============================================================================
+# Execution Functions
+# =============================================================================
+
+
+def launch_claude_code(
+    prompt: str,
+    project_dir: Path,
+    skip_permissions: bool = True,
+) -> subprocess.Popen:
+    """
+    Launch Claude Code with the execution prompt via stdin.
+
+    Note: The -p flag assumes Claude Code reads prompts from stdin.
+    Verify against Claude Code's actual CLI documentation and adjust if needed.
+
+    Args:
+        prompt: Execution prompt
+        project_dir: Project directory to run in
+        skip_permissions: Whether to use --dangerously-skip-permissions
+
+    Returns:
+        Claude Code process handle
+    """
+    cmd = ["claude"]
+
+    if skip_permissions:
+        cmd.append("--dangerously-skip-permissions")
+
+    cmd.append("-p")  # Read prompt from stdin
+
+    process = subprocess.Popen(
+        cmd,
+        cwd=project_dir,
+        stdin=subprocess.PIPE,
+        text=True,
+    )
+
+    if process.stdin:
+        process.stdin.write(prompt)
+        process.stdin.close()
+
+    return process
+
+
+def prepare_audit(
+    audit_path: Path,
+    project_dir: Path | None = None,
+    output_dir: Path | None = None,
+    skip_validation: bool = False,
+    force: bool = False,
+) -> PrepareResult:
+    """
+    Prepare an audit for execution.
+
+    Args:
+        audit_path: Path to audit document
+        project_dir: Target project (default: current directory)
+        output_dir: Phase files directory (default: ./audit-phases)
+        skip_validation: Skip validation checks
+        force: Overwrite existing audit-phases/ directory
+
+    Returns:
+        PrepareResult with all paths and prompt
+
+    Raises:
+        ParseError: If document invalid
+        ValidationError: If validation fails with errors
+        FileNotFoundError: If audit file not found
+        FileExistsError: If audit-phases/ exists and not --force
+    """
+    # Resolve paths
+    audit_path = Path(audit_path).resolve()
+    if not audit_path.exists():
+        raise FileNotFoundError(f"Audit file not found: {audit_path}")
+
+    project_dir = Path(project_dir).resolve() if project_dir else Path.cwd()
+    output_dir = project_dir / (output_dir or "audit-phases")
+
+    # Check for existing directory
+    if output_dir.exists() and not force:
+        raise FileExistsError(
+            f"Directory {output_dir.name}/ already exists. Use --force to overwrite."
+        )
+
+    # Read and parse document
+    content = audit_path.read_text()
+    document = parse_audit_document(content, audit_path)
+
+    # Validate unless skipped
+    if skip_validation:
+        validation = ValidationResult(
+            valid=True,
+            source_path=str(audit_path),
+            document_title=document.title,
+            phase_count=document.phase_count,
+            phase_range=document.phase_range,
+        )
+    else:
+        validation = validate_document(content, audit_path)
+        if not validation.valid:
+            raise ValidationError(
+                f"Validation failed with {len(validation.errors)} error(s).",
+                validation.errors,
+            )
+
+    # Clean existing directory if --force
+    if output_dir.exists() and force:
+        shutil.rmtree(output_dir)
+
+    # Split document into files
+    setup_file, phase_files, meta_dir = split_document(
+        document, output_dir, project_dir
+    )
+
+    # Copy original audit to project root
+    audit_copy = project_dir / "AUDIT.md"
+    shutil.copy2(audit_path, audit_copy)
+
+    # Generate prompt
+    prompt = generate_execution_prompt(document, audit_path.name)
+
+    return PrepareResult(
+        document=document,
+        validation=validation,
+        project_dir=project_dir,
+        audit_phases_dir=output_dir,
+        meta_dir=meta_dir,
+        setup_file=setup_file,
+        phase_files=phase_files,
+        audit_copy=audit_copy,
+        prompt=prompt,
+    )
+
+
+def execute_audit(
+    audit_path: Path,
+    project_dir: Path | None = None,
+    output_dir: Path | None = None,
+    skip_permissions: bool = True,
+    skip_validation: bool = False,
+    force: bool = False,
+) -> tuple[PrepareResult, subprocess.Popen]:
+    """
+    Prepare and execute an audit.
+
+    Args:
+        audit_path: Path to audit document
+        project_dir: Target project (default: current directory)
+        output_dir: Phase files directory (default: ./audit-phases)
+        skip_permissions: Use --dangerously-skip-permissions flag
+        skip_validation: Skip validation checks
+        force: Overwrite existing audit-phases/ directory
+
+    Returns:
+        Tuple of (PrepareResult, Claude Code process handle)
+
+    Raises:
+        ParseError: If document invalid
+        ValidationError: If validation fails
+        FileNotFoundError: If audit file or claude not found
+        FileExistsError: If audit-phases/ exists and not --force
+    """
+    # Check Claude Code is installed
+    if not shutil.which("claude"):
+        raise ExecutionError(
+            "Claude Code not found. Install from https://claude.ai/code"
+        )
+
+    # Prepare the audit
+    result = prepare_audit(
+        audit_path=audit_path,
+        project_dir=project_dir,
+        output_dir=output_dir,
+        skip_validation=skip_validation,
+        force=force,
+    )
+
+    # Launch Claude Code
+    process = launch_claude_code(
+        prompt=result.prompt,
+        project_dir=result.project_dir,
+        skip_permissions=skip_permissions,
+    )
+
+    return result, process
