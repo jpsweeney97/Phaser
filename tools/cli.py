@@ -25,6 +25,25 @@ from pathlib import Path
 import click
 import pyperclip
 
+from tools.analytics import (
+    AggregatedStats,
+    AnalyticsQuery,
+    ExecutionStatus,
+    StorageError,
+    ImportError as AnalyticsImportError,
+    clear_analytics,
+    compute_project_stats,
+    delete_execution,
+    format_csv,
+    format_json,
+    format_markdown,
+    format_table,
+    import_execution_report,
+    list_executions,
+    load_index,
+    query_executions,
+    save_execution,
+)
 from tools.branches import cli as branches_cli
 from tools.bridge import (
     validate_document,
@@ -421,6 +440,184 @@ def execute_cmd(
     except (ParseError, ValidationError, ExecutionError, FileExistsError) as e:
         click.echo(f"✗ {e}", err=True)
         raise SystemExit(1)
+
+
+# =============================================================================
+# Analytics Commands
+# =============================================================================
+
+
+@cli.group()
+def analytics():
+    """View and manage execution analytics."""
+    pass
+
+
+@analytics.command("show")
+@click.option("--last", "limit", type=int, default=5, help="Number of executions to show")
+@click.option("--since", type=click.DateTime(), help="Show executions since date")
+@click.option("--until", type=click.DateTime(), help="Show executions until date")
+@click.option(
+    "--status",
+    type=click.Choice(["success", "partial", "failed", "all"]),
+    default="all",
+    help="Filter by status",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "json", "markdown"]),
+    default="table",
+    help="Output format",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Show per-phase details")
+@click.option("--project", type=click.Path(exists=True), help="Project directory")
+def analytics_show(limit, since, until, status, output_format, verbose, project):
+    """Show execution analytics."""
+    project_dir = Path(project) if project else Path.cwd()
+
+    # Build query
+    status_filter = ExecutionStatus(status) if status != "all" else None
+    query = AnalyticsQuery(
+        limit=limit,
+        since=since,
+        until=until,
+        status=status_filter,
+    )
+
+    # Execute query
+    records = query_executions(project_dir, query)
+    stats = AggregatedStats.compute(records) if records else AggregatedStats.empty()
+
+    # Format output
+    if output_format == "json":
+        output = format_json(records, stats, query, project_dir.name)
+    elif output_format == "markdown":
+        output = format_markdown(records, stats, project_dir.name)
+    else:
+        output = format_table(records, stats, verbose=verbose, project_name=project_dir.name)
+
+    click.echo(output)
+
+
+@analytics.command("export")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "markdown", "csv"]),
+    default="json",
+    help="Output format",
+)
+@click.option("--output", "-o", type=click.Path(), help="Output file")
+@click.option("--since", type=click.DateTime(), help="Export executions since date")
+@click.option("--until", type=click.DateTime(), help="Export executions until date")
+@click.option("--project", type=click.Path(exists=True), help="Project directory")
+def analytics_export(output_format, output, since, until, project):
+    """Export analytics data."""
+    project_dir = Path(project) if project else Path.cwd()
+
+    query = AnalyticsQuery(since=since, until=until)
+    records = query_executions(project_dir, query)
+    stats = AggregatedStats.compute(records) if records else AggregatedStats.empty()
+
+    if output_format == "json":
+        content = format_json(records, stats, query, project_dir.name)
+    elif output_format == "markdown":
+        content = format_markdown(records, stats, project_dir.name)
+    else:
+        content = format_csv(records)
+
+    if output:
+        Path(output).write_text(content)
+        click.echo(f"Exported {len(records)} execution(s) to {output}")
+    else:
+        click.echo(content)
+
+
+@analytics.command("clear")
+@click.option("--before", type=click.DateTime(), help="Clear executions before date")
+@click.option("--all", "clear_all", is_flag=True, help="Clear all data")
+@click.option("--force", "-f", is_flag=True, help="Skip confirmation")
+@click.option("--dry-run", is_flag=True, help="Show what would be deleted")
+@click.option("--project", type=click.Path(exists=True), help="Project directory")
+def analytics_clear(before, clear_all, force, dry_run, project):
+    """Clear analytics data."""
+    project_dir = Path(project) if project else Path.cwd()
+
+    if not clear_all and not before:
+        raise click.UsageError("Must specify --all or --before")
+
+    # Get records to delete
+    if clear_all:
+        records = list_executions(project_dir)
+    else:
+        query = AnalyticsQuery(until=before)
+        records = query_executions(project_dir, query)
+
+    if not records:
+        click.echo("No matching records to delete.")
+        return
+
+    if dry_run:
+        click.echo(f"Would delete {len(records)} execution record(s):")
+        for r in records[:10]:
+            click.echo(f"  - {r.audit_document} ({r.started_at.date()})")
+        if len(records) > 10:
+            click.echo(f"  ... and {len(records) - 10} more")
+        return
+
+    if not force:
+        click.confirm(f"Delete {len(records)} execution record(s)?", abort=True)
+
+    # Delete records
+    for record in records:
+        try:
+            delete_execution(record.execution_id, project_dir)
+        except StorageError:
+            pass  # Already deleted or missing
+
+    click.echo(f"Deleted {len(records)} execution record(s).")
+
+
+@analytics.command("import")
+@click.argument("report_file", type=click.Path(exists=True))
+@click.option("--recursive", "-r", is_flag=True, help="Scan directory recursively")
+@click.option("--force", "-f", is_flag=True, help="Re-import even if exists")
+@click.option("--project", type=click.Path(exists=True), help="Project directory")
+def analytics_import(report_file, recursive, force, project):
+    """Import execution data from EXECUTION_REPORT.md files."""
+    project_dir = Path(project) if project else Path.cwd()
+    report_path = Path(report_file)
+
+    # Find reports to import
+    if report_path.is_dir():
+        if recursive:
+            reports = list(report_path.rglob("EXECUTION_REPORT.md"))
+        else:
+            reports = list(report_path.glob("EXECUTION_REPORT.md"))
+    else:
+        reports = [report_path]
+
+    if not reports:
+        click.echo("No reports found to import.")
+        return
+
+    imported = 0
+    errors = []
+
+    for report in reports:
+        try:
+            record = import_execution_report(report, project_dir)
+            save_execution(record, project_dir)
+            imported += 1
+            click.echo(f"✓ Imported: {record.audit_document}")
+        except (StorageError, AnalyticsImportError) as e:
+            errors.append((report, str(e)))
+            click.echo(f"✗ Failed: {report.name} - {e}")
+
+    click.echo(f"\nImported {imported} execution(s).")
+    if errors:
+        click.echo(f"Failed: {len(errors)}")
 
 
 def main() -> None:

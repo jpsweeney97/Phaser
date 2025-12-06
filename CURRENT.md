@@ -9,10 +9,10 @@
 - [x] Phase 3: Report Parsing
 - [x] Phase 4: Query and Aggregation
 - [x] Phase 5: Output Formatting
-- [ ] Phase 6: CLI Commands
+- [x] Phase 6: CLI Commands
 - [ ] Phase 7: Integration Tests
 
-## Current Phase: 6
+## Current Phase: 7
 
 ## Notes
 

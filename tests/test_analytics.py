@@ -1386,3 +1386,175 @@ class TestOutputFormatting:
         from tools.analytics import format_csv
         output = format_csv(sample_records)
         assert '"document-7-reverse.md"' in output
+
+
+# =============================================================================
+# CLI Tests
+# =============================================================================
+
+
+class TestCLICommands:
+    """Tests for CLI commands."""
+
+    @pytest.fixture
+    def temp_project(self, tmp_path):
+        """Create a temporary project directory."""
+        project = tmp_path / "TestProject"
+        project.mkdir()
+        return project
+
+    @pytest.fixture
+    def cli_runner(self):
+        """Create CLI runner."""
+        from click.testing import CliRunner
+        return CliRunner()
+
+    @pytest.fixture
+    def populated_project(self, temp_project):
+        """Create project with sample data."""
+        from tools.analytics import save_execution
+
+        record = ExecutionRecord(
+            execution_id="cli-test-1",
+            audit_document="test-doc.md",
+            document_title="Test Doc",
+            project_name="Test",
+            project_path=str(temp_project),
+            branch="test",
+            started_at=datetime(2024, 12, 6, 10, 0, 0),
+            completed_at=datetime(2024, 12, 6, 11, 0, 0),
+            phaser_version="1.7.0",
+            status=ExecutionStatus.SUCCESS,
+            phases_planned=3,
+            phases_completed=3,
+            baseline_tests=100,
+            final_tests=115,
+            base_commit="aaa",
+            final_commit="bbb",
+            commit_count=3,
+            files_changed=5,
+        )
+        save_execution(record, temp_project)
+        return temp_project
+
+    def test_analytics_show_default(self, cli_runner, populated_project):
+        """Test analytics show command."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, ["analytics", "show", "--project", str(populated_project)])
+        assert result.exit_code == 0
+        assert "test-doc.md" in result.output
+
+    def test_analytics_show_json(self, cli_runner, populated_project):
+        """Test analytics show with JSON format."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, ["analytics", "show", "--format", "json", "--project", str(populated_project)])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "executions" in data
+        assert len(data["executions"]) == 1
+
+    def test_analytics_show_empty(self, cli_runner, temp_project):
+        """Test analytics show with no data."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, ["analytics", "show", "--project", str(temp_project)])
+        assert result.exit_code == 0
+        assert "No analytics data" in result.output
+
+    def test_analytics_export_json(self, cli_runner, populated_project, tmp_path):
+        """Test analytics export to file."""
+        from tools.cli import cli
+        output_file = tmp_path / "export.json"
+        result = cli_runner.invoke(cli, [
+            "analytics", "export",
+            "--format", "json",
+            "--output", str(output_file),
+            "--project", str(populated_project),
+        ])
+        assert result.exit_code == 0
+        assert output_file.exists()
+        data = json.loads(output_file.read_text())
+        assert len(data["executions"]) == 1
+
+    def test_analytics_export_csv(self, cli_runner, populated_project):
+        """Test analytics export as CSV."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, [
+            "analytics", "export",
+            "--format", "csv",
+            "--project", str(populated_project),
+        ])
+        assert result.exit_code == 0
+        assert "execution_id" in result.output
+        assert "test-doc.md" in result.output
+
+    def test_analytics_clear_dry_run(self, cli_runner, populated_project):
+        """Test analytics clear dry run."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, [
+            "analytics", "clear",
+            "--all",
+            "--dry-run",
+            "--project", str(populated_project),
+        ])
+        assert result.exit_code == 0
+        assert "Would delete" in result.output
+
+    def test_analytics_clear_force(self, cli_runner, populated_project):
+        """Test analytics clear with force."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, [
+            "analytics", "clear",
+            "--all",
+            "--force",
+            "--project", str(populated_project),
+        ])
+        assert result.exit_code == 0
+        assert "Deleted" in result.output
+
+    def test_analytics_clear_requires_option(self, cli_runner, populated_project):
+        """Test analytics clear requires --all or --before."""
+        from tools.cli import cli
+        result = cli_runner.invoke(cli, [
+            "analytics", "clear",
+            "--project", str(populated_project),
+        ])
+        assert result.exit_code != 0
+        assert "Must specify" in result.output
+
+    def test_analytics_import_file(self, cli_runner, temp_project, tmp_path):
+        """Test analytics import from file."""
+        from tools.cli import cli
+        from pathlib import Path
+
+        # Create a sample report
+        report_path = tmp_path / "EXECUTION_REPORT.md"
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_execution_report.md"
+        report_path.write_text(fixture_path.read_text())
+
+        result = cli_runner.invoke(cli, [
+            "analytics", "import",
+            str(report_path),
+            "--project", str(temp_project),
+        ])
+        assert result.exit_code == 0
+        assert "Imported" in result.output
+
+    def test_analytics_import_directory(self, cli_runner, temp_project, tmp_path):
+        """Test analytics import from directory."""
+        from tools.cli import cli
+        from pathlib import Path
+
+        # Create sample reports in directory
+        reports_dir = tmp_path / "reports"
+        reports_dir.mkdir()
+
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_execution_report.md"
+        (reports_dir / "EXECUTION_REPORT.md").write_text(fixture_path.read_text())
+
+        result = cli_runner.invoke(cli, [
+            "analytics", "import",
+            str(reports_dir),
+            "--project", str(temp_project),
+        ])
+        assert result.exit_code == 0
+        assert "Imported 1" in result.output
