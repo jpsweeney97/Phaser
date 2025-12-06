@@ -1558,3 +1558,219 @@ class TestCLICommands:
         ])
         assert result.exit_code == 0
         assert "Imported 1" in result.output
+
+
+# =============================================================================
+# Integration Tests
+# =============================================================================
+
+
+class TestIntegration:
+    """End-to-end integration tests."""
+
+    @pytest.fixture
+    def temp_project(self, tmp_path):
+        """Create a temporary project directory."""
+        project = tmp_path / "IntegrationTestProject"
+        project.mkdir()
+        return project
+
+    @pytest.fixture
+    def sample_report_path(self):
+        """Get path to sample report fixture."""
+        from pathlib import Path
+        return Path(__file__).parent / "fixtures" / "sample_execution_report.md"
+
+    def test_full_workflow_import_query_export(self, temp_project, sample_report_path, tmp_path):
+        """Test complete workflow: import → query → export."""
+        from tools.analytics import (
+            import_execution_report,
+            save_execution,
+            query_executions,
+            compute_project_stats,
+            format_json,
+            AggregatedStats,
+        )
+
+        # Import
+        record = import_execution_report(sample_report_path, temp_project)
+        save_execution(record, temp_project)
+
+        # Query
+        records = query_executions(temp_project)
+        assert len(records) == 1
+        assert records[0].audit_document == "document-7-reverse.md"
+
+        # Stats
+        stats = compute_project_stats(temp_project)
+        assert stats.total_executions == 1
+        assert stats.successful == 1
+
+        # Export
+        output = format_json(records, stats)
+        data = json.loads(output)
+        assert data["stats"]["total_executions"] == 1
+
+    def test_multiple_imports_aggregation(self, temp_project, sample_report_path):
+        """Test importing multiple reports and aggregating."""
+        from tools.analytics import (
+            import_execution_report,
+            save_execution,
+            compute_project_stats,
+            ExecutionRecord,
+            ExecutionStatus,
+        )
+
+        # Import first report
+        record1 = import_execution_report(sample_report_path, temp_project)
+        save_execution(record1, temp_project)
+
+        # Create and save a second record
+        record2 = ExecutionRecord(
+            execution_id=ExecutionRecord.generate_id(),
+            audit_document="another-doc.md",
+            document_title="Another Doc",
+            project_name="Test",
+            project_path=str(temp_project),
+            branch="test2",
+            started_at=datetime(2024, 12, 7, 10, 0, 0),
+            completed_at=datetime(2024, 12, 7, 11, 0, 0),
+            phaser_version="1.7.0",
+            status=ExecutionStatus.SUCCESS,
+            phases_planned=3,
+            phases_completed=3,
+            baseline_tests=312,
+            final_tests=350,
+            base_commit="x",
+            final_commit="y",
+            commit_count=3,
+            files_changed=8,
+        )
+        save_execution(record2, temp_project)
+
+        # Verify aggregation
+        stats = compute_project_stats(temp_project)
+        assert stats.total_executions == 2
+        assert stats.successful == 2
+        assert stats.total_test_delta == 32 + 38  # Both deltas
+
+    def test_clear_and_reimport(self, temp_project, sample_report_path):
+        """Test clearing data and reimporting."""
+        from tools.analytics import (
+            import_execution_report,
+            save_execution,
+            clear_analytics,
+            list_executions,
+        )
+
+        # Import
+        record = import_execution_report(sample_report_path, temp_project)
+        save_execution(record, temp_project)
+        assert len(list_executions(temp_project)) == 1
+
+        # Clear
+        count = clear_analytics(temp_project)
+        assert count == 1
+        assert len(list_executions(temp_project)) == 0
+
+        # Reimport
+        record = import_execution_report(sample_report_path, temp_project)
+        save_execution(record, temp_project)
+        assert len(list_executions(temp_project)) == 1
+
+    def test_query_filter_combinations(self, temp_project):
+        """Test various query filter combinations."""
+        from tools.analytics import (
+            save_execution,
+            query_executions,
+            AnalyticsQuery,
+            ExecutionRecord,
+            ExecutionStatus,
+        )
+
+        # Create records with different dates and statuses
+        for i, (days_ago, status) in enumerate([
+            (10, ExecutionStatus.SUCCESS),
+            (5, ExecutionStatus.FAILED),
+            (3, ExecutionStatus.SUCCESS),
+            (1, ExecutionStatus.PARTIAL),
+        ]):
+            record = ExecutionRecord(
+                execution_id=f"query-test-{i}",
+                audit_document=f"doc-{i}.md",
+                document_title=f"Doc {i}",
+                project_name="Test",
+                project_path=str(temp_project),
+                branch=f"b{i}",
+                started_at=datetime(2024, 12, 1) + timedelta(days=10 - days_ago),
+                completed_at=datetime(2024, 12, 1) + timedelta(days=10 - days_ago, hours=1),
+                phaser_version="1.7.0",
+                status=status,
+                phases_planned=3,
+                phases_completed=3 if status == ExecutionStatus.SUCCESS else 1,
+                baseline_tests=100,
+                final_tests=110,
+                base_commit="a",
+                final_commit="b",
+                commit_count=3,
+                files_changed=5,
+            )
+            save_execution(record, temp_project)
+
+        # Test various queries
+        all_records = query_executions(temp_project)
+        assert len(all_records) == 4
+
+        success_only = query_executions(temp_project, AnalyticsQuery(status=ExecutionStatus.SUCCESS))
+        assert len(success_only) == 2
+
+        recent = query_executions(temp_project, AnalyticsQuery(since=datetime(2024, 12, 8)))
+        assert len(recent) == 2
+
+        limited = query_executions(temp_project, AnalyticsQuery(limit=2))
+        assert len(limited) == 2
+
+    def test_cli_full_workflow(self, temp_project, sample_report_path, tmp_path):
+        """Test full workflow through CLI."""
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        runner = CliRunner()
+
+        # Import via CLI
+        result = runner.invoke(cli, [
+            "analytics", "import",
+            str(sample_report_path),
+            "--project", str(temp_project),
+        ])
+        assert result.exit_code == 0
+        assert "Imported" in result.output
+
+        # Show via CLI
+        result = runner.invoke(cli, [
+            "analytics", "show",
+            "--format", "json",
+            "--project", str(temp_project),
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert len(data["executions"]) == 1
+
+        # Export via CLI
+        export_path = tmp_path / "export.json"
+        result = runner.invoke(cli, [
+            "analytics", "export",
+            "--output", str(export_path),
+            "--project", str(temp_project),
+        ])
+        assert result.exit_code == 0
+        assert export_path.exists()
+
+        # Clear via CLI
+        result = runner.invoke(cli, [
+            "analytics", "clear",
+            "--all", "--force",
+            "--project", str(temp_project),
+        ])
+        assert result.exit_code == 0
+        assert "Deleted" in result.output
