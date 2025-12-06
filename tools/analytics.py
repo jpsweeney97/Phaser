@@ -1208,3 +1208,250 @@ def get_recent_failures(
     """
     query = AnalyticsQuery(status=ExecutionStatus.FAILED, limit=limit)
     return query_executions(project_dir, query)
+
+
+# =============================================================================
+# Output Formatting
+# =============================================================================
+
+
+def format_duration(seconds: float) -> str:
+    """
+    Format duration in human-readable form.
+
+    Args:
+        seconds: Duration in seconds
+
+    Returns:
+        Formatted string like "1h 23m" or "45m 12s"
+    """
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    elif seconds < 3600:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}m {secs}s" if secs else f"{minutes}m"
+    else:
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        return f"{hours}h {minutes}m" if minutes else f"{hours}h"
+
+
+def format_status_symbol(status: ExecutionStatus) -> str:
+    """Get status symbol for display."""
+    symbols = {
+        ExecutionStatus.SUCCESS: "✅",
+        ExecutionStatus.PARTIAL: "⚠️",
+        ExecutionStatus.FAILED: "❌",
+    }
+    return symbols.get(status, "?")
+
+
+def format_table(
+    records: list[ExecutionRecord],
+    stats: AggregatedStats,
+    verbose: bool = False,
+    project_name: str = "",
+) -> str:
+    """
+    Format execution data as ASCII table.
+
+    Args:
+        records: Execution records to display
+        stats: Aggregated statistics
+        verbose: Include per-phase details
+        project_name: Project name for header
+
+    Returns:
+        Formatted table string
+    """
+    if not records:
+        return "No analytics data found."
+
+    lines = []
+
+    # Header
+    title = f"{project_name} Analytics" if project_name else "Phaser Analytics"
+    lines.append(f"\n{title} - Last {len(records)} Execution(s)\n")
+    lines.append("-" * 70)
+
+    # Table header
+    lines.append(f"{'Date':<12} {'Document':<28} {'Status':<8} {'Duration':<10} {'Δ Tests':<8}")
+    lines.append("-" * 70)
+
+    # Rows
+    for record in records:
+        date_str = record.started_at.strftime("%Y-%m-%d")
+        doc_name = record.audit_document[:26] + ".." if len(record.audit_document) > 28 else record.audit_document
+        status = format_status_symbol(record.status)
+        duration = format_duration(record.duration_seconds)
+        delta = f"+{record.test_delta}" if record.test_delta >= 0 else str(record.test_delta)
+
+        lines.append(f"{date_str:<12} {doc_name:<28} {status:<8} {duration:<10} {delta:<8}")
+
+        # Verbose: show phases
+        if verbose and record.phases:
+            lines.append("")
+            for phase in record.phases:
+                p_status = format_status_symbol(
+                    ExecutionStatus.SUCCESS if phase.status == PhaseStatus.COMPLETED
+                    else ExecutionStatus.FAILED if phase.status == PhaseStatus.FAILED
+                    else ExecutionStatus.PARTIAL
+                )
+                commit = phase.commit_sha[:7] if phase.commit_sha else "-"
+                lines.append(f"    Phase {phase.phase_number}: {phase.title[:30]:<30} {p_status} {commit}")
+            lines.append("")
+
+    lines.append("-" * 70)
+
+    # Summary
+    success_pct = int(stats.success_rate * 100)
+    avg_duration = format_duration(stats.avg_duration_seconds)
+    delta_sign = "+" if stats.total_test_delta >= 0 else ""
+
+    lines.append(
+        f"Summary: {stats.total_executions} executions | "
+        f"{stats.successful} successful ({success_pct}%) | "
+        f"Avg: {avg_duration} | "
+        f"Total Δ: {delta_sign}{stats.total_test_delta} tests"
+    )
+
+    return "\n".join(lines)
+
+
+def format_json(
+    records: list[ExecutionRecord],
+    stats: AggregatedStats,
+    query: AnalyticsQuery | None = None,
+    project_name: str = "",
+) -> str:
+    """
+    Format execution data as JSON.
+
+    Args:
+        records: Execution records
+        stats: Aggregated statistics
+        query: Original query (for context)
+        project_name: Project name
+
+    Returns:
+        JSON string
+    """
+    data = {
+        "query": query.to_dict() if query else {},
+        "project": {
+            "name": project_name,
+        },
+        "executions": [r.to_dict() for r in records],
+        "stats": stats.to_dict(),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+    return json.dumps(data, indent=2)
+
+
+def format_markdown(
+    records: list[ExecutionRecord],
+    stats: AggregatedStats,
+    project_name: str = "",
+) -> str:
+    """
+    Format execution data as markdown report.
+
+    Args:
+        records: Execution records
+        stats: Aggregated statistics
+        project_name: Project name
+
+    Returns:
+        Markdown string
+    """
+    lines = []
+
+    # Header
+    title = f"{project_name} Analytics Report" if project_name else "Phaser Analytics Report"
+    lines.append(f"# {title}")
+    lines.append("")
+    lines.append(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    lines.append("")
+
+    # Summary table
+    lines.append("## Summary")
+    lines.append("")
+    lines.append("| Metric | Value |")
+    lines.append("|--------|-------|")
+    lines.append(f"| Total Executions | {stats.total_executions} |")
+    lines.append(f"| Successful | {stats.successful} ({int(stats.success_rate * 100)}%) |")
+    lines.append(f"| Partial | {stats.partial} |")
+    lines.append(f"| Failed | {stats.failed} |")
+    lines.append(f"| Average Duration | {format_duration(stats.avg_duration_seconds)} |")
+    lines.append(f"| Total Test Delta | {'+' if stats.total_test_delta >= 0 else ''}{stats.total_test_delta} |")
+    lines.append("")
+
+    # Recent executions
+    lines.append("## Recent Executions")
+    lines.append("")
+
+    for record in records[:10]:  # Limit to 10 for readability
+        status = format_status_symbol(record.status)
+        lines.append(f"### {record.audit_document}")
+        lines.append("")
+        lines.append(f"- **Status:** {status} {record.status.value.title()}")
+        lines.append(f"- **Date:** {record.started_at.strftime('%Y-%m-%d')}")
+        lines.append(f"- **Duration:** {format_duration(record.duration_seconds)}")
+        lines.append(f"- **Tests:** {record.baseline_tests} → {record.final_tests} ({'+' if record.test_delta >= 0 else ''}{record.test_delta})")
+        lines.append(f"- **Phases:** {record.phases_completed}/{record.phases_planned} completed")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def format_csv(records: list[ExecutionRecord]) -> str:
+    """
+    Format execution data as CSV.
+
+    Args:
+        records: Execution records
+
+    Returns:
+        CSV string with header row
+    """
+    lines = []
+
+    # Header
+    headers = [
+        "execution_id",
+        "audit_document",
+        "started_at",
+        "completed_at",
+        "duration_seconds",
+        "status",
+        "phases_planned",
+        "phases_completed",
+        "baseline_tests",
+        "final_tests",
+        "test_delta",
+        "commit_count",
+        "files_changed",
+    ]
+    lines.append(",".join(headers))
+
+    # Rows
+    for record in records:
+        row = [
+            record.execution_id,
+            f'"{record.audit_document}"',  # Quote for safety
+            record.started_at.isoformat(),
+            record.completed_at.isoformat(),
+            str(record.duration_seconds),
+            record.status.value,
+            str(record.phases_planned),
+            str(record.phases_completed),
+            str(record.baseline_tests),
+            str(record.final_tests),
+            str(record.test_delta),
+            str(record.commit_count),
+            str(record.files_changed),
+        ]
+        lines.append(",".join(row))
+
+    return "\n".join(lines)

@@ -1,5 +1,6 @@
 """Tests for analytics module."""
 
+import json
 from datetime import datetime, timedelta
 
 import pytest
@@ -1219,3 +1220,169 @@ class TestQueryOperations:
         failures = get_recent_failures(populated_project)
         assert len(failures) == 1
         assert failures[0].status == ExecutionStatus.FAILED
+
+
+# =============================================================================
+# Formatting Tests
+# =============================================================================
+
+
+class TestOutputFormatting:
+    """Tests for output formatting functions."""
+
+    @pytest.fixture
+    def sample_records(self):
+        """Create sample records for formatting tests."""
+        return [
+            ExecutionRecord(
+                execution_id="test-1",
+                audit_document="document-7-reverse.md",
+                document_title="Doc 7",
+                project_name="Phaser",
+                project_path="/test",
+                branch="b1",
+                started_at=datetime(2024, 12, 6, 10, 0, 0),
+                completed_at=datetime(2024, 12, 6, 11, 30, 0),
+                phaser_version="1.6.3",
+                status=ExecutionStatus.SUCCESS,
+                phases_planned=6,
+                phases_completed=6,
+                baseline_tests=280,
+                final_tests=312,
+                base_commit="aaa",
+                final_commit="bbb",
+                commit_count=7,
+                files_changed=12,
+                phases=[
+                    PhaseRecord(1, "Phase One", PhaseStatus.COMPLETED, "abc1234"),
+                    PhaseRecord(2, "Phase Two", PhaseStatus.COMPLETED, "def5678"),
+                ],
+            ),
+            ExecutionRecord(
+                execution_id="test-2",
+                audit_document="document-8-analytics.md",
+                document_title="Doc 8",
+                project_name="Phaser",
+                project_path="/test",
+                branch="b2",
+                started_at=datetime(2024, 12, 5, 14, 0, 0),
+                completed_at=datetime(2024, 12, 5, 14, 45, 0),
+                phaser_version="1.7.0",
+                status=ExecutionStatus.FAILED,
+                phases_planned=4,
+                phases_completed=2,
+                baseline_tests=312,
+                final_tests=320,
+                base_commit="bbb",
+                final_commit="ccc",
+                commit_count=2,
+                files_changed=5,
+            ),
+        ]
+
+    @pytest.fixture
+    def sample_stats(self, sample_records):
+        """Compute stats from sample records."""
+        return AggregatedStats.compute(sample_records)
+
+    def test_format_duration_seconds(self):
+        """Test formatting seconds."""
+        from tools.analytics import format_duration
+        assert format_duration(45) == "45s"
+
+    def test_format_duration_minutes(self):
+        """Test formatting minutes."""
+        from tools.analytics import format_duration
+        assert format_duration(125) == "2m 5s"
+        assert format_duration(120) == "2m"
+
+    def test_format_duration_hours(self):
+        """Test formatting hours."""
+        from tools.analytics import format_duration
+        assert format_duration(5400) == "1h 30m"
+        assert format_duration(3600) == "1h"
+
+    def test_format_table_basic(self, sample_records, sample_stats):
+        """Test basic table formatting."""
+        from tools.analytics import format_table
+        output = format_table(sample_records, sample_stats)
+        assert "document-7-reverse.md" in output
+        assert "✅" in output
+        assert "❌" in output
+        assert "Summary:" in output
+
+    def test_format_table_empty(self):
+        """Test table formatting with no records."""
+        from tools.analytics import format_table
+        output = format_table([], AggregatedStats.empty())
+        assert "No analytics data" in output
+
+    def test_format_table_verbose(self, sample_records, sample_stats):
+        """Test verbose table formatting."""
+        from tools.analytics import format_table
+        output = format_table(sample_records, sample_stats, verbose=True)
+        assert "Phase 1:" in output
+        assert "Phase One" in output
+
+    def test_format_json_valid(self, sample_records, sample_stats):
+        """Test JSON formatting produces valid JSON."""
+        from tools.analytics import format_json
+        output = format_json(sample_records, sample_stats)
+        parsed = json.loads(output)
+        assert "executions" in parsed
+        assert len(parsed["executions"]) == 2
+
+    def test_format_json_includes_stats(self, sample_records, sample_stats):
+        """Test JSON includes statistics."""
+        from tools.analytics import format_json
+        output = format_json(sample_records, sample_stats)
+        parsed = json.loads(output)
+        assert "stats" in parsed
+        assert parsed["stats"]["total_executions"] == 2
+
+    def test_format_json_includes_query(self, sample_records, sample_stats):
+        """Test JSON includes query context."""
+        from tools.analytics import format_json
+        query = AnalyticsQuery(limit=10, status=ExecutionStatus.SUCCESS)
+        output = format_json(sample_records, sample_stats, query=query)
+        parsed = json.loads(output)
+        assert parsed["query"]["limit"] == 10
+        assert parsed["query"]["status"] == "success"
+
+    def test_format_markdown_sections(self, sample_records, sample_stats):
+        """Test markdown has all sections."""
+        from tools.analytics import format_markdown
+        output = format_markdown(sample_records, sample_stats)
+        assert "# " in output  # Title
+        assert "## Summary" in output
+        assert "## Recent Executions" in output
+        assert "| Metric | Value |" in output
+
+    def test_format_markdown_records(self, sample_records, sample_stats):
+        """Test markdown includes record details."""
+        from tools.analytics import format_markdown
+        output = format_markdown(sample_records, sample_stats)
+        assert "document-7-reverse.md" in output
+        assert "280 → 312" in output
+
+    def test_format_csv_header(self, sample_records):
+        """Test CSV has header row."""
+        from tools.analytics import format_csv
+        output = format_csv(sample_records)
+        lines = output.split("\n")
+        assert "execution_id" in lines[0]
+        assert "audit_document" in lines[0]
+        assert "status" in lines[0]
+
+    def test_format_csv_rows(self, sample_records):
+        """Test CSV has data rows."""
+        from tools.analytics import format_csv
+        output = format_csv(sample_records)
+        lines = output.split("\n")
+        assert len(lines) == 3  # Header + 2 records
+
+    def test_format_csv_escaping(self, sample_records):
+        """Test CSV escapes document names."""
+        from tools.analytics import format_csv
+        output = format_csv(sample_records)
+        assert '"document-7-reverse.md"' in output

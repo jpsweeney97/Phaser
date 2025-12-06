@@ -8,11 +8,11 @@
 - [x] Phase 2: Storage Operations
 - [x] Phase 3: Report Parsing
 - [x] Phase 4: Query and Aggregation
-- [ ] Phase 5: Output Formatting
+- [x] Phase 5: Output Formatting
 - [ ] Phase 6: CLI Commands
 - [ ] Phase 7: Integration Tests
 
-## Current Phase: 5
+## Current Phase: 6
 
 ## Notes
 
