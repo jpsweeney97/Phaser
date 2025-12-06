@@ -76,3 +76,180 @@ class FileAction(str, Enum):
     CREATE = "CREATE"
     MODIFY = "MODIFY"
     DELETE = "DELETE"
+
+
+# =============================================================================
+# Data Classes
+# =============================================================================
+
+
+@dataclass
+class ValidationIssue:
+    """A single validation error or warning."""
+
+    level: str  # "error" or "warning"
+    phase: int | None  # Phase number, or None for document-level
+    line: int | None  # Line number, if applicable
+    message: str  # Human-readable message
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "level": self.level,
+            "phase": self.phase,
+            "line": self.line,
+            "message": self.message,
+        }
+
+
+@dataclass
+class ValidationResult:
+    """Result of document validation."""
+
+    valid: bool  # True if no errors
+    errors: list[ValidationIssue] = field(default_factory=list)
+    warnings: list[ValidationIssue] = field(default_factory=list)
+
+    source_path: str | None = None
+    document_title: str | None = None
+    phase_count: int = 0
+    phase_range: str | None = None
+    token_estimates: dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "file": self.source_path,
+            "valid": self.valid,
+            "document": {
+                "title": self.document_title,
+                "phases": self.phase_count,
+                "phase_range": self.phase_range,
+            },
+            "errors": [e.to_dict() for e in self.errors],
+            "warnings": [w.to_dict() for w in self.warnings],
+            "tokens": self.token_estimates,
+        }
+
+
+@dataclass
+class PhaseFile:
+    """A file entry from the Files table."""
+
+    path: str  # "tools/reverse.py"
+    action: FileAction  # CREATE, MODIFY, DELETE
+    purpose: str  # "Reverse audit module"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "action": self.action.value,
+            "purpose": self.purpose,
+        }
+
+
+@dataclass
+class Phase:
+    """A single phase from an audit document."""
+
+    number: int  # 36
+    title: str  # "Reverse Audit Specification"
+
+    context: str = ""
+    goal: str = ""
+    files: list[PhaseFile] = field(default_factory=list)
+    plan: list[str] = field(default_factory=list)
+    implementation: str = ""
+    verify: str = ""
+    acceptance_criteria: list[str] = field(default_factory=list)
+    rollback: str = ""
+    completion: str = ""
+
+    raw_content: str = ""
+    line_start: int = 0
+
+    @property
+    def estimated_tokens(self) -> int:
+        """Estimate token count (conservative: 1 token per 3.5 chars)."""
+        return int(len(self.raw_content) / 3.5)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "number": self.number,
+            "title": self.title,
+            "files": [f.to_dict() for f in self.files],
+            "estimated_tokens": self.estimated_tokens,
+            "line_start": self.line_start,
+        }
+
+
+@dataclass
+class AuditDocument:
+    """Parsed audit document."""
+
+    title: str  # "Document 7: Reverse Audit"
+    document_number: int  # 7
+    source_path: Path | None = None
+
+    overview: str | None = None
+    prerequisites: str | None = None
+
+    phases: list[Phase] = field(default_factory=list)
+    setup_block: str = ""
+    completion_block: str | None = None
+
+    raw_content: str = ""
+
+    @property
+    def phase_count(self) -> int:
+        return len(self.phases)
+
+    @property
+    def phase_start(self) -> int:
+        return self.phases[0].number if self.phases else 0
+
+    @property
+    def phase_end(self) -> int:
+        return self.phases[-1].number if self.phases else 0
+
+    @property
+    def phase_range(self) -> str:
+        return f"{self.phase_start}-{self.phase_end}"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "document_number": self.document_number,
+            "source_path": str(self.source_path) if self.source_path else None,
+            "overview": self.overview,
+            "prerequisites": self.prerequisites,
+            "phases": [p.to_dict() for p in self.phases],
+            "phase_start": self.phase_start,
+            "phase_end": self.phase_end,
+            "phase_count": self.phase_count,
+        }
+
+
+@dataclass
+class PrepareResult:
+    """Result of preparing an audit for execution."""
+
+    document: AuditDocument
+    validation: ValidationResult
+    project_dir: Path
+    audit_phases_dir: Path
+    meta_dir: Path
+
+    setup_file: Path
+    phase_files: list[Path] = field(default_factory=list)
+    audit_copy: Path | None = None
+
+    prompt: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "document": self.document.to_dict(),
+            "validation": self.validation.to_dict(),
+            "project_dir": str(self.project_dir),
+            "setup_file": str(self.setup_file),
+            "phase_files": [str(p) for p in self.phase_files],
+            "audit_copy": str(self.audit_copy) if self.audit_copy else None,
+        }
