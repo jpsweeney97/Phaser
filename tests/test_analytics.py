@@ -589,3 +589,270 @@ class TestExceptions:
         """Test raising StorageError."""
         with pytest.raises(StorageError):
             raise StorageError("Cannot write file")
+
+
+# =============================================================================
+# Storage Tests
+# =============================================================================
+
+
+class TestStorageOperations:
+    """Tests for storage operations."""
+
+    @pytest.fixture
+    def temp_project(self, tmp_path):
+        """Create a temporary project directory."""
+        project = tmp_path / "TestProject"
+        project.mkdir()
+        return project
+
+    @pytest.fixture
+    def sample_record(self):
+        """Create a sample execution record."""
+        return ExecutionRecord(
+            execution_id="12345678-1234-1234-1234-123456789abc",
+            audit_document="document-7-reverse.md",
+            document_title="Document 7: Reverse Audit",
+            project_name="Phaser",
+            project_path="/Users/jp/Projects/Phaser",
+            branch="audit/2024-12-06-reverse",
+            started_at=datetime(2024, 12, 6, 10, 0, 0),
+            completed_at=datetime(2024, 12, 6, 11, 30, 0),
+            phaser_version="1.6.3",
+            status=ExecutionStatus.SUCCESS,
+            phases_planned=6,
+            phases_completed=6,
+            baseline_tests=280,
+            final_tests=312,
+            base_commit="aaa111",
+            final_commit="bbb222",
+            commit_count=7,
+            files_changed=12,
+        )
+
+    def test_get_analytics_dir(self, temp_project):
+        """Test analytics directory path."""
+        from tools.analytics import get_analytics_dir
+        path = get_analytics_dir(temp_project)
+        assert path == temp_project / ".phaser" / "analytics"
+
+    def test_get_executions_dir(self, temp_project):
+        """Test executions directory path."""
+        from tools.analytics import get_executions_dir
+        path = get_executions_dir(temp_project)
+        assert path == temp_project / ".phaser" / "analytics" / "executions"
+
+    def test_get_index_path(self, temp_project):
+        """Test index file path."""
+        from tools.analytics import get_index_path
+        path = get_index_path(temp_project)
+        assert path == temp_project / ".phaser" / "analytics" / "index.json"
+
+    def test_ensure_analytics_dir_creates(self, temp_project):
+        """Test directory creation."""
+        from tools.analytics import ensure_analytics_dir, get_executions_dir
+        ensure_analytics_dir(temp_project)
+        assert get_executions_dir(temp_project).exists()
+
+    def test_ensure_analytics_dir_idempotent(self, temp_project):
+        """Test directory creation is idempotent."""
+        from tools.analytics import ensure_analytics_dir
+        ensure_analytics_dir(temp_project)
+        ensure_analytics_dir(temp_project)  # Should not raise
+
+    def test_generate_execution_filename(self, sample_record):
+        """Test filename generation."""
+        from tools.analytics import generate_execution_filename
+        filename = generate_execution_filename(sample_record)
+        assert filename == "2024-12-06T10-00-00-12345678.json"
+
+    def test_save_execution_creates_file(self, temp_project, sample_record):
+        """Test saving creates file."""
+        from tools.analytics import save_execution, get_executions_dir
+        filepath = save_execution(sample_record, temp_project)
+        assert filepath.exists()
+        assert filepath.parent == get_executions_dir(temp_project)
+
+    def test_save_execution_updates_index(self, temp_project, sample_record):
+        """Test saving updates index."""
+        from tools.analytics import save_execution, get_index_path
+        save_execution(sample_record, temp_project)
+        index_path = get_index_path(temp_project)
+        assert index_path.exists()
+
+    def test_load_execution_returns_record(self, temp_project, sample_record):
+        """Test loading returns correct record."""
+        from tools.analytics import save_execution, load_execution
+        save_execution(sample_record, temp_project)
+        loaded = load_execution(sample_record.execution_id, temp_project)
+        assert loaded.execution_id == sample_record.execution_id
+        assert loaded.audit_document == sample_record.audit_document
+        assert loaded.status == sample_record.status
+
+    def test_load_execution_not_found(self, temp_project):
+        """Test loading non-existent record raises error."""
+        from tools.analytics import load_execution, ensure_analytics_dir
+        ensure_analytics_dir(temp_project)
+        with pytest.raises(StorageError, match="not found"):
+            load_execution("nonexistent-id", temp_project)
+
+    def test_load_execution_no_analytics_dir(self, temp_project):
+        """Test loading from project without analytics."""
+        from tools.analytics import load_execution
+        with pytest.raises(StorageError, match="No analytics data"):
+            load_execution("any-id", temp_project)
+
+    def test_delete_execution_removes_file(self, temp_project, sample_record):
+        """Test deleting removes file."""
+        from tools.analytics import save_execution, delete_execution, get_executions_dir
+        save_execution(sample_record, temp_project)
+        delete_execution(sample_record.execution_id, temp_project)
+        files = list(get_executions_dir(temp_project).glob("*.json"))
+        assert len(files) == 0
+
+    def test_delete_execution_updates_index(self, temp_project, sample_record):
+        """Test deleting updates index."""
+        from tools.analytics import save_execution, delete_execution, load_index
+        save_execution(sample_record, temp_project)
+        delete_execution(sample_record.execution_id, temp_project)
+        index = load_index(temp_project)
+        assert index["execution_count"] == 0
+
+    def test_delete_execution_not_found(self, temp_project):
+        """Test deleting non-existent record raises error."""
+        from tools.analytics import delete_execution, ensure_analytics_dir
+        ensure_analytics_dir(temp_project)
+        with pytest.raises(StorageError, match="not found"):
+            delete_execution("nonexistent-id", temp_project)
+
+    def test_list_executions_empty(self, temp_project):
+        """Test listing empty analytics."""
+        from tools.analytics import list_executions
+        records = list_executions(temp_project)
+        assert records == []
+
+    def test_list_executions_returns_records(self, temp_project, sample_record):
+        """Test listing returns saved records."""
+        from tools.analytics import save_execution, list_executions
+        save_execution(sample_record, temp_project)
+        records = list_executions(temp_project)
+        assert len(records) == 1
+        assert records[0].execution_id == sample_record.execution_id
+
+    def test_list_executions_sorted_by_date(self, temp_project):
+        """Test listing returns records sorted by date."""
+        from tools.analytics import save_execution, list_executions
+
+        record1 = ExecutionRecord(
+            execution_id="record-1",
+            audit_document="doc1.md",
+            document_title="Doc 1",
+            project_name="Test",
+            project_path="/test",
+            branch="b1",
+            started_at=datetime(2024, 12, 1, 10, 0, 0),
+            completed_at=datetime(2024, 12, 1, 11, 0, 0),
+            phaser_version="1.0",
+            status=ExecutionStatus.SUCCESS,
+            phases_planned=1,
+            phases_completed=1,
+            baseline_tests=100,
+            final_tests=110,
+            base_commit="a",
+            final_commit="b",
+            commit_count=1,
+            files_changed=1,
+        )
+        record2 = ExecutionRecord(
+            execution_id="record-2",
+            audit_document="doc2.md",
+            document_title="Doc 2",
+            project_name="Test",
+            project_path="/test",
+            branch="b2",
+            started_at=datetime(2024, 12, 5, 10, 0, 0),
+            completed_at=datetime(2024, 12, 5, 11, 0, 0),
+            phaser_version="1.0",
+            status=ExecutionStatus.SUCCESS,
+            phases_planned=1,
+            phases_completed=1,
+            baseline_tests=110,
+            final_tests=120,
+            base_commit="b",
+            final_commit="c",
+            commit_count=1,
+            files_changed=1,
+        )
+
+        save_execution(record1, temp_project)
+        save_execution(record2, temp_project)
+
+        records = list_executions(temp_project)
+        assert len(records) == 2
+        assert records[0].execution_id == "record-2"  # Newer first
+        assert records[1].execution_id == "record-1"
+
+    def test_update_index_creates_index(self, temp_project, sample_record):
+        """Test update_index creates index file."""
+        from tools.analytics import save_execution, get_index_path
+        save_execution(sample_record, temp_project)
+        assert get_index_path(temp_project).exists()
+
+    def test_load_index_returns_data(self, temp_project, sample_record):
+        """Test load_index returns correct data."""
+        from tools.analytics import save_execution, load_index
+        save_execution(sample_record, temp_project)
+        index = load_index(temp_project)
+        assert index["execution_count"] == 1
+        assert len(index["executions"]) == 1
+        assert "stats" in index
+
+    def test_load_index_empty_project(self, temp_project):
+        """Test load_index on project without analytics."""
+        from tools.analytics import load_index
+        index = load_index(temp_project)
+        assert index["execution_count"] == 0
+
+    def test_clear_analytics_removes_all(self, temp_project, sample_record):
+        """Test clear_analytics removes all data."""
+        from tools.analytics import save_execution, clear_analytics, list_executions
+        save_execution(sample_record, temp_project)
+        count = clear_analytics(temp_project)
+        assert count == 1
+        assert list_executions(temp_project) == []
+
+    def test_clear_analytics_returns_count(self, temp_project):
+        """Test clear_analytics returns correct count."""
+        from tools.analytics import save_execution, clear_analytics, ExecutionRecord
+
+        for i in range(3):
+            record = ExecutionRecord(
+                execution_id=f"record-{i}",
+                audit_document=f"doc{i}.md",
+                document_title=f"Doc {i}",
+                project_name="Test",
+                project_path="/test",
+                branch=f"b{i}",
+                started_at=datetime(2024, 12, i + 1, 10, 0, 0),
+                completed_at=datetime(2024, 12, i + 1, 11, 0, 0),
+                phaser_version="1.0",
+                status=ExecutionStatus.SUCCESS,
+                phases_planned=1,
+                phases_completed=1,
+                baseline_tests=100,
+                final_tests=110,
+                base_commit="a",
+                final_commit="b",
+                commit_count=1,
+                files_changed=1,
+            )
+            save_execution(record, temp_project)
+
+        count = clear_analytics(temp_project)
+        assert count == 3
+
+    def test_clear_analytics_empty_project(self, temp_project):
+        """Test clear_analytics on empty project."""
+        from tools.analytics import clear_analytics
+        count = clear_analytics(temp_project)
+        assert count == 0

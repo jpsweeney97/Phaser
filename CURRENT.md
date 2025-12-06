@@ -5,14 +5,14 @@
 ## Phases
 
 - [x] Phase 1: Data Classes and Enums
-- [ ] Phase 2: Storage Operations
+- [x] Phase 2: Storage Operations
 - [ ] Phase 3: Report Parsing
 - [ ] Phase 4: Query and Aggregation
 - [ ] Phase 5: Output Formatting
 - [ ] Phase 6: CLI Commands
 - [ ] Phase 7: Integration Tests
 
-## Current Phase: 2
+## Current Phase: 3
 
 ## Notes
 

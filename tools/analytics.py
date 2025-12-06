@@ -436,3 +436,327 @@ class AnalyticsQuery:
             "status": self.status.value if self.status else None,
             "document": self.document,
         }
+
+
+# =============================================================================
+# Storage Operations
+# =============================================================================
+
+
+def get_analytics_dir(project_dir: Path) -> Path:
+    """
+    Get the analytics directory for a project.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to .phaser/analytics/ directory
+    """
+    return project_dir / ANALYTICS_DIR_NAME / "analytics"
+
+
+def get_executions_dir(project_dir: Path) -> Path:
+    """
+    Get the executions subdirectory.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to .phaser/analytics/executions/ directory
+    """
+    return get_analytics_dir(project_dir) / EXECUTIONS_DIR_NAME
+
+
+def get_index_path(project_dir: Path) -> Path:
+    """
+    Get the index file path.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to .phaser/analytics/index.json
+    """
+    return get_analytics_dir(project_dir) / INDEX_FILENAME
+
+
+def ensure_analytics_dir(project_dir: Path) -> Path:
+    """
+    Ensure analytics directory structure exists.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to .phaser/analytics/ directory (created if needed)
+    """
+    analytics_dir = get_analytics_dir(project_dir)
+    analytics_dir.mkdir(parents=True, exist_ok=True)
+    get_executions_dir(project_dir).mkdir(exist_ok=True)
+    return analytics_dir
+
+
+def generate_execution_filename(record: ExecutionRecord) -> str:
+    """
+    Generate filename for an execution record.
+
+    Format: {timestamp}-{short_id}.json
+
+    Args:
+        record: ExecutionRecord to generate filename for
+
+    Returns:
+        Filename string
+    """
+    timestamp = record.started_at.strftime("%Y-%m-%dT%H-%M-%S")
+    short_id = record.execution_id[:8]
+    return f"{timestamp}-{short_id}.json"
+
+
+def save_execution(record: ExecutionRecord, project_dir: Path) -> Path:
+    """
+    Save an execution record to disk.
+
+    Args:
+        record: ExecutionRecord to save
+        project_dir: Project root directory
+
+    Returns:
+        Path to saved JSON file
+
+    Raises:
+        StorageError: If write fails
+    """
+    ensure_analytics_dir(project_dir)
+    executions_dir = get_executions_dir(project_dir)
+
+    filename = generate_execution_filename(record)
+    filepath = executions_dir / filename
+
+    try:
+        with open(filepath, "w") as f:
+            json.dump(record.to_dict(), f, indent=2)
+    except OSError as e:
+        raise StorageError(f"Failed to save execution record: {e}")
+
+    # Update index
+    update_index(project_dir)
+
+    return filepath
+
+
+def load_execution(execution_id: str, project_dir: Path) -> ExecutionRecord:
+    """
+    Load an execution record from disk.
+
+    Args:
+        execution_id: UUID of execution to load
+        project_dir: Project root directory
+
+    Returns:
+        ExecutionRecord
+
+    Raises:
+        StorageError: If record not found or read fails
+    """
+    executions_dir = get_executions_dir(project_dir)
+
+    if not executions_dir.exists():
+        raise StorageError(f"No analytics data found in {project_dir}")
+
+    # Search for file containing execution_id
+    for filepath in executions_dir.glob("*.json"):
+        if execution_id[:8] in filepath.name:
+            try:
+                with open(filepath) as f:
+                    data = json.load(f)
+                if data.get("execution_id") == execution_id:
+                    return ExecutionRecord.from_dict(data)
+            except (OSError, json.JSONDecodeError):
+                continue
+
+    raise StorageError(f"Execution not found: {execution_id}")
+
+
+def load_execution_by_path(filepath: Path) -> ExecutionRecord:
+    """
+    Load an execution record from a specific file.
+
+    Args:
+        filepath: Path to JSON file
+
+    Returns:
+        ExecutionRecord
+
+    Raises:
+        StorageError: If read fails
+    """
+    try:
+        with open(filepath) as f:
+            data = json.load(f)
+        return ExecutionRecord.from_dict(data)
+    except OSError as e:
+        raise StorageError(f"Failed to read execution file: {e}")
+    except (json.JSONDecodeError, KeyError) as e:
+        raise StorageError(f"Invalid execution file format: {e}")
+
+
+def delete_execution(execution_id: str, project_dir: Path) -> None:
+    """
+    Delete an execution record.
+
+    Args:
+        execution_id: UUID of execution to delete
+        project_dir: Project root directory
+
+    Raises:
+        StorageError: If record not found or delete fails
+    """
+    executions_dir = get_executions_dir(project_dir)
+
+    if not executions_dir.exists():
+        raise StorageError(f"No analytics data found in {project_dir}")
+
+    # Search for file containing execution_id
+    for filepath in executions_dir.glob("*.json"):
+        if execution_id[:8] in filepath.name:
+            try:
+                with open(filepath) as f:
+                    data = json.load(f)
+                if data.get("execution_id") == execution_id:
+                    filepath.unlink()
+                    update_index(project_dir)
+                    return
+            except (OSError, json.JSONDecodeError):
+                continue
+
+    raise StorageError(f"Execution not found: {execution_id}")
+
+
+def list_executions(project_dir: Path) -> list[ExecutionRecord]:
+    """
+    List all execution records in a project.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        List of ExecutionRecords, sorted by start time descending
+    """
+    executions_dir = get_executions_dir(project_dir)
+
+    if not executions_dir.exists():
+        return []
+
+    records = []
+    for filepath in executions_dir.glob("*.json"):
+        try:
+            record = load_execution_by_path(filepath)
+            records.append(record)
+        except StorageError:
+            continue
+
+    # Sort by start time, newest first
+    records.sort(key=lambda r: r.started_at, reverse=True)
+    return records
+
+
+def update_index(project_dir: Path) -> None:
+    """
+    Rebuild the analytics index from execution files.
+
+    Args:
+        project_dir: Project root directory
+    """
+    records = list_executions(project_dir)
+    stats = AggregatedStats.compute(records)
+
+    index_data = {
+        "schema_version": ANALYTICS_SCHEMA_VERSION,
+        "project_name": project_dir.name,
+        "updated_at": datetime.utcnow().isoformat(),
+        "execution_count": len(records),
+        "executions": [
+            {
+                "execution_id": r.execution_id,
+                "filename": generate_execution_filename(r),
+                "audit_document": r.audit_document,
+                "started_at": r.started_at.isoformat(),
+                "status": r.status.value,
+                "duration_seconds": r.duration_seconds,
+                "test_delta": r.test_delta,
+            }
+            for r in records
+        ],
+        "stats": stats.to_dict(),
+    }
+
+    index_path = get_index_path(project_dir)
+    ensure_analytics_dir(project_dir)
+
+    try:
+        with open(index_path, "w") as f:
+            json.dump(index_data, f, indent=2)
+    except OSError as e:
+        raise StorageError(f"Failed to update index: {e}")
+
+
+def load_index(project_dir: Path) -> dict[str, Any]:
+    """
+    Load the analytics index.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Index data dictionary
+
+    Raises:
+        StorageError: If index not found or invalid
+    """
+    index_path = get_index_path(project_dir)
+
+    if not index_path.exists():
+        return {
+            "schema_version": ANALYTICS_SCHEMA_VERSION,
+            "project_name": project_dir.name,
+            "execution_count": 0,
+            "executions": [],
+            "stats": AggregatedStats.empty().to_dict(),
+        }
+
+    try:
+        with open(index_path) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        raise StorageError(f"Failed to load index: {e}")
+
+
+def clear_analytics(project_dir: Path) -> int:
+    """
+    Clear all analytics data for a project.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Number of records deleted
+    """
+    executions_dir = get_executions_dir(project_dir)
+
+    if not executions_dir.exists():
+        return 0
+
+    count = 0
+    for filepath in executions_dir.glob("*.json"):
+        filepath.unlink()
+        count += 1
+
+    # Clear index
+    index_path = get_index_path(project_dir)
+    if index_path.exists():
+        index_path.unlink()
+
+    return count
