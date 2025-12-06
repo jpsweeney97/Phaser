@@ -5,10 +5,10 @@
 ## Phases
 
 - [x] Phase 1: Fix find_code_block_ranges with Fence Matching
-- [ ] Phase 2: Fix launch_claude_code CLI Function
+- [x] Phase 2: Fix launch_claude_code CLI Function
 - [ ] Phase 3: Add Tests
 
-## Current Phase: 2
+## Current Phase: 3
 
 ## Notes
 

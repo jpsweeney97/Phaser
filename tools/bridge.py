@@ -1286,40 +1286,32 @@ def launch_claude_code(
     prompt: str,
     project_dir: Path,
     skip_permissions: bool = True,
-) -> subprocess.Popen:
+) -> subprocess.CompletedProcess:
     """
-    Launch Claude Code with the execution prompt via stdin.
+    Launch Claude Code with the execution prompt.
 
-    Note: The -p flag assumes Claude Code reads prompts from stdin.
-    Verify against Claude Code's actual CLI documentation and adjust if needed.
+    Starts Claude Code in interactive REPL mode with the prompt as the
+    initial message. The process inherits the terminal for full interactivity.
 
     Args:
-        prompt: Execution prompt
+        prompt: Execution prompt (passed as command argument)
         project_dir: Project directory to run in
         skip_permissions: Whether to use --dangerously-skip-permissions
 
     Returns:
-        Claude Code process handle
+        CompletedProcess with return code and output info
     """
     cmd = ["claude"]
 
     if skip_permissions:
         cmd.append("--dangerously-skip-permissions")
 
-    cmd.append("-p")  # Read prompt from stdin
+    # Pass prompt as argument to start interactive REPL
+    # (NOT -p which is print mode and exits immediately)
+    cmd.append(prompt)
 
-    process = subprocess.Popen(
-        cmd,
-        cwd=project_dir,
-        stdin=subprocess.PIPE,
-        text=True,
-    )
-
-    if process.stdin:
-        process.stdin.write(prompt)
-        process.stdin.close()
-
-    return process
+    # Use run() to block until complete and inherit terminal
+    return subprocess.run(cmd, cwd=project_dir)
 
 
 def prepare_audit(
@@ -1424,7 +1416,7 @@ def execute_audit(
     skip_permissions: bool = True,
     skip_validation: bool = False,
     force: bool = False,
-) -> tuple[PrepareResult, subprocess.Popen]:
+) -> tuple[PrepareResult, subprocess.CompletedProcess]:
     """
     Prepare and execute an audit.
 
@@ -1437,7 +1429,7 @@ def execute_audit(
         force: Overwrite existing audit-phases/ directory
 
     Returns:
-        Tuple of (PrepareResult, Claude Code process handle)
+        Tuple of (PrepareResult, CompletedProcess with execution result)
 
     Raises:
         ParseError: If document invalid
@@ -1460,11 +1452,11 @@ def execute_audit(
         force=force,
     )
 
-    # Launch Claude Code
-    process = launch_claude_code(
+    # Launch Claude Code (blocks until complete)
+    completed = launch_claude_code(
         prompt=result.prompt,
         project_dir=result.project_dir,
         skip_permissions=skip_permissions,
     )
 
-    return result, process
+    return result, completed
