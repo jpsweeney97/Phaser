@@ -1261,9 +1261,14 @@ def prepare_audit(
         document, output_dir, project_dir
     )
 
-    # Copy original audit to project root
+    # Copy original audit to project root (avoid SameFileError on case-insensitive filesystems)
     audit_copy = project_dir / "AUDIT.md"
-    shutil.copy2(audit_path, audit_copy)
+    try:
+        if not audit_path.samefile(audit_copy):
+            shutil.copy2(audit_path, audit_copy)
+    except FileNotFoundError:
+        # audit_copy doesn't exist yet, safe to copy
+        shutil.copy2(audit_path, audit_copy)
 
     # Generate prompt
     prompt = generate_execution_prompt(document, audit_path.name)

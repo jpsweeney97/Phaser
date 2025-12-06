@@ -595,3 +595,461 @@ c
         assert "errors" in d
         assert "warnings" in d
         assert "tokens" in d
+
+
+# =============================================================================
+# File Generation Tests
+# =============================================================================
+
+
+class TestCreateSetupFileContent:
+    def test_with_prerequisites(self):
+        from tools.bridge import create_setup_file_content
+
+        content = f"""## Prerequisites
+
+Test prereq content
+
+{SETUP_START_MARKER}
+Setup block content
+{SETUP_END_MARKER}
+"""
+        result = create_setup_file_content(content)
+        assert "Prerequisites" in result
+        assert "Test prereq content" in result
+        assert "Setup block content" in result
+
+    def test_without_prerequisites(self):
+        from tools.bridge import create_setup_file_content
+
+        content = f"""{SETUP_START_MARKER}
+Setup only
+{SETUP_END_MARKER}
+"""
+        result = create_setup_file_content(content)
+        assert "Setup only" in result
+
+
+class TestCalculateZeroPadding:
+    def test_single_digit(self):
+        from tools.bridge import calculate_zero_padding
+
+        assert calculate_zero_padding(9) == 1
+
+    def test_double_digit(self):
+        from tools.bridge import calculate_zero_padding
+
+        assert calculate_zero_padding(41) == 2
+        assert calculate_zero_padding(99) == 2
+
+    def test_triple_digit(self):
+        from tools.bridge import calculate_zero_padding
+
+        assert calculate_zero_padding(100) == 3
+        assert calculate_zero_padding(120) == 3
+
+
+class TestSplitDocument:
+    def test_creates_all_files(self, minimal_document_content, tmp_path):
+        from tools.bridge import parse_audit_document, split_document
+
+        doc = parse_audit_document(minimal_document_content)
+        setup, phases, meta = split_document(doc, tmp_path / "audit-phases", tmp_path)
+
+        assert setup.exists()
+        assert setup.name == "setup.md"
+        assert len(phases) == 1
+        assert phases[0].name == "phase-1.md"
+        assert meta.exists()
+        assert (meta / "phaser-version").exists()
+        assert (meta / "baseline-tests").exists()
+
+    def test_zero_padding(self, tmp_path):
+        from tools.bridge import AuditDocument, Phase, split_document
+
+        doc = AuditDocument(
+            title="Test",
+            document_number=1,
+            phases=[
+                Phase(1, "First", raw_content="## Phase 1: First\nContent"),
+                Phase(10, "Tenth", raw_content="## Phase 10: Tenth\nContent"),
+            ],
+            setup_block=f"{SETUP_START_MARKER}\nSetup\n{SETUP_END_MARKER}",
+            raw_content=f"{SETUP_START_MARKER}\nSetup\n{SETUP_END_MARKER}",
+        )
+
+        setup, phases, meta = split_document(doc, tmp_path / "audit-phases", tmp_path)
+
+        assert phases[0].name == "phase-01.md"
+        assert phases[1].name == "phase-10.md"
+
+
+class TestWriteMetadata:
+    def test_creates_files(self, tmp_path):
+        from tools.bridge import write_metadata, PHASER_VERSION
+
+        meta_dir = write_metadata(tmp_path, 150)
+
+        assert meta_dir.exists()
+        assert (meta_dir / "phaser-version").read_text() == PHASER_VERSION
+        assert (meta_dir / "baseline-tests").read_text() == "150"
+
+
+# =============================================================================
+# Prompt Generation Tests
+# =============================================================================
+
+
+class TestGenerateExecutionPrompt:
+    def test_includes_all_variables(self):
+        from tools.bridge import AuditDocument, Phase, generate_execution_prompt
+
+        doc = AuditDocument(
+            title="Document 7: Reverse Audit",
+            document_number=7,
+            phases=[Phase(36, "First"), Phase(37, "Second"), Phase(38, "Third")],
+        )
+
+        prompt = generate_execution_prompt(doc, "document-7-reverse.md")
+
+        assert "phase-36.md" in prompt
+        assert "phase-38.md" in prompt
+        assert "3 completed" in prompt or "of 3" in prompt
+        assert "Document 7: Reverse Audit" in prompt
+        assert "document-7-reverse.md" in prompt
+
+
+# =============================================================================
+# Execution Function Tests
+# =============================================================================
+
+
+class TestPrepareAudit:
+    def test_successful_preparation(self, minimal_document_content, tmp_path):
+        from tools.bridge import prepare_audit
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        result = prepare_audit(audit_file, project_dir=tmp_path)
+
+        assert result.setup_file.exists()
+        assert len(result.phase_files) == 1
+        assert result.audit_copy.exists()
+        assert result.audit_copy.name == "AUDIT.md"
+        assert len(result.prompt) > 0
+
+    def test_file_not_found(self, tmp_path):
+        from tools.bridge import prepare_audit
+
+        with pytest.raises(FileNotFoundError):
+            prepare_audit(tmp_path / "nonexistent.md")
+
+    def test_directory_exists_error(self, minimal_document_content, tmp_path):
+        from tools.bridge import prepare_audit
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+        (tmp_path / "audit-phases").mkdir()
+
+        with pytest.raises(FileExistsError):
+            prepare_audit(audit_file, project_dir=tmp_path)
+
+    def test_force_overwrites(self, minimal_document_content, tmp_path):
+        from tools.bridge import prepare_audit
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+        existing_dir = tmp_path / "audit-phases"
+        existing_dir.mkdir()
+        (existing_dir / "old-file.txt").write_text("old")
+
+        result = prepare_audit(audit_file, project_dir=tmp_path, force=True)
+
+        assert result.setup_file.exists()
+        assert not (existing_dir / "old-file.txt").exists()
+
+    def test_validation_error(self, tmp_path):
+        from tools.bridge import prepare_audit, ValidationError, ParseError
+
+        # Document missing setup block - raises ParseError during parsing
+        content = """# Document 1: Test
+## Phase 1: Test
+Content
+"""
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(content)
+
+        with pytest.raises((ValidationError, ParseError)):
+            prepare_audit(audit_file, project_dir=tmp_path)
+
+    def test_skip_validation(self, tmp_path):
+        from tools.bridge import prepare_audit
+
+        # Document with issues that would fail validation
+        content = f"""# Document 1: Test
+{SETUP_START_MARKER}
+Setup
+{SETUP_END_MARKER}
+## Phase 1: Test
+### Context
+c
+### Goal
+g
+### Files
+| File | Action | Purpose |
+### Implementation
+i
+### Verify
+v
+### Completion
+c
+"""
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(content)
+
+        # Should succeed with skip_validation
+        result = prepare_audit(audit_file, project_dir=tmp_path, skip_validation=True)
+        assert result.validation.valid is True
+
+
+# =============================================================================
+# CLI Tests
+# =============================================================================
+
+
+class TestValidateCLI:
+    def test_valid_document(self, minimal_document_content, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["validate", str(audit_file)])
+
+        assert result.exit_code == 0
+        assert "valid" in result.output.lower()
+
+    def test_invalid_document(self, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text("# Document 1: Test\nNo setup block")
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["validate", str(audit_file)])
+
+        assert result.exit_code == 1
+
+    def test_json_output(self, minimal_document_content, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+        import json
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["validate", "--json", str(audit_file)])
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "valid" in data
+        assert "document" in data
+
+    def test_strict_mode(self, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        # Document that's valid but has warnings
+        content = f"""# Document 1: Test
+{SETUP_START_MARKER}
+Setup
+{SETUP_END_MARKER}
+## Phase 1: Test
+### Context
+c
+### Goal
+g
+### Files
+| File | Action | Purpose |
+### Implementation
+i
+### Verify
+# Expected: x
+### Completion
+c
+"""
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(content)
+
+        runner = CliRunner()
+
+        # Without strict: should pass
+        result = runner.invoke(cli, ["validate", str(audit_file)])
+        assert result.exit_code == 0
+
+        # With strict: should fail (warnings become errors)
+        result = runner.invoke(cli, ["validate", "--strict", str(audit_file)])
+        assert result.exit_code == 1
+
+
+class TestPrepareCLI:
+    def test_dry_run(self, minimal_document_content, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["prepare", "--dry-run", "--project", str(tmp_path), str(audit_file)]
+        )
+
+        assert result.exit_code == 0
+        assert "DRY RUN" in result.output
+        assert not (tmp_path / "audit-phases").exists()
+
+    def test_creates_files(self, minimal_document_content, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["prepare", "--project", str(tmp_path), "--no-clipboard", str(audit_file)],
+        )
+
+        assert result.exit_code == 0
+        assert (tmp_path / "audit-phases" / "setup.md").exists()
+        assert (tmp_path / "AUDIT.md").exists()
+
+
+class TestExecuteCLI:
+    def test_dry_run(self, minimal_document_content, tmp_path):
+        from click.testing import CliRunner
+        from tools.cli import cli
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["execute", "--dry-run", "--project", str(tmp_path), str(audit_file)]
+        )
+
+        assert result.exit_code == 0
+        assert "DRY RUN" in result.output
+
+
+# =============================================================================
+# Integration Tests
+# =============================================================================
+
+
+class TestIntegration:
+    def test_full_prepare_workflow(self, minimal_document_content, tmp_path):
+        """Test the complete prepare workflow."""
+        from tools.bridge import prepare_audit
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(minimal_document_content)
+
+        result = prepare_audit(audit_file, project_dir=tmp_path)
+
+        # Check all outputs
+        assert result.validation.valid
+        assert result.setup_file.exists()
+        assert all(pf.exists() for pf in result.phase_files)
+        assert result.audit_copy.exists()
+        assert result.meta_dir.exists()
+        assert (result.meta_dir / "phaser-version").exists()
+        assert (result.meta_dir / "baseline-tests").exists()
+        assert len(result.prompt) > 1000  # Prompt should be substantial
+
+        # Check setup.md includes prerequisites
+        setup_content = result.setup_file.read_text()
+        assert "Prerequisites" in setup_content
+
+    def test_multi_phase_document(self, tmp_path):
+        """Test document with multiple phases."""
+        content = f"""# Document 1: Multi Phase Test
+
+## Prerequisites
+# Expected: 200+ passed
+
+{SETUP_START_MARKER}
+Setup block
+{SETUP_END_MARKER}
+
+## Phase 1: First Phase
+
+### Context
+First context
+### Goal
+First goal
+### Files
+| File | Action | Purpose |
+### Implementation
+First impl
+### Verify
+# Expected: first
+### Completion
+First done
+
+## Phase 2: Second Phase
+
+### Context
+Second context
+### Goal
+Second goal
+### Files
+| File | Action | Purpose |
+### Implementation
+Second impl
+### Verify
+# Expected: second
+### Completion
+Second done
+
+## Phase 3: Third Phase
+
+### Context
+Third context
+### Goal
+Third goal
+### Files
+| File | Action | Purpose |
+### Implementation
+Third impl
+### Verify
+# Expected: third
+### Completion
+Third done
+
+## Document Completion
+Final steps
+"""
+        from tools.bridge import prepare_audit
+
+        audit_file = tmp_path / "audit.md"
+        audit_file.write_text(content)
+
+        result = prepare_audit(audit_file, project_dir=tmp_path)
+
+        assert result.document.phase_count == 3
+        assert len(result.phase_files) == 3
+        assert result.phase_files[0].name == "phase-1.md"
+        assert result.phase_files[1].name == "phase-2.md"
+        assert result.phase_files[2].name == "phase-3.md"
+
+        # Check prompt includes all phases
+        assert "phase-1.md" in result.prompt
+        assert "phase-3.md" in result.prompt
