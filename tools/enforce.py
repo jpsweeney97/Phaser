@@ -11,6 +11,7 @@ from typing import Optional
 import click
 
 from tools.contract_loader import Contract, load_contracts
+from tools.ignore_parser import filter_violations
 from tools.tool_input import ProposedFile, reconstruct
 
 
@@ -197,11 +198,18 @@ def enforce_command(
     load_result = load_contracts(project_root=Path(cwd))
 
     # Check contracts
-    violations = check_all_contracts(
+    all_violations = check_all_contracts(
         load_result.contracts,
         reconstruction.files,
         severity_filter=severity,
     )
+
+    # Apply ignore directives
+    violations: list[Violation] = []
+    for proposed in reconstruction.files:
+        file_violations = [v for v in all_violations if v.file_path == proposed.path]
+        kept, _ = filter_violations(file_violations, proposed.path, proposed.content)
+        violations.extend(kept)
 
     # Build result
     if violations:
