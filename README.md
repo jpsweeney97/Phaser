@@ -4,6 +4,12 @@ Audit automation for Claude Code.
 
 ---
 
+## What's New in v1.8
+
+- **Hook-Based Enforcement:** Real-time contract checking via Claude Code hooks
+- **Inline Ignores:** Suppress violations with `# phaser:ignore <rule-id>`
+- **Install Command:** `phaser enforce install` for quick hook setup
+
 ## What's New in v1.7
 
 - **Reverse Audit:** Generate audit documents from existing git history
@@ -240,6 +246,39 @@ phaser contracts enable <id>         # Enable a contract
 phaser contracts disable <id>        # Disable a contract
 ```
 
+### Enforce (Hook-Based Contracts)
+
+Continuous contract enforcement via Claude Code hooks:
+
+```bash
+# Install hooks (adds to .claude/settings.json)
+phaser enforce install
+
+# Or install to user settings (applies to all projects)
+phaser enforce install --scope user
+
+# Preview without writing
+phaser enforce install --dry-run
+```
+
+Once installed, contracts are checked automatically:
+
+- **PreToolUse**: Blocks edits that violate `error`-severity contracts
+- **PostToolUse**: Warns about `warning`-severity violations
+
+**Contracts location:**
+
+- Project: `.claude/contracts/*.yaml`
+- User: `~/.phaser/contracts/*.yaml`
+
+**Inline ignores:**
+
+```python
+x = 1  # phaser:ignore rule-id
+# phaser:ignore-next-line rule-id
+y = 2
+```
+
 ### Simulate (Dry-Run)
 
 ```bash
@@ -325,4 +364,4 @@ phaser ci init --python-version 3.12
 
 ---
 
-*Phaser v1.7.0*
+*Phaser v1.8.0*

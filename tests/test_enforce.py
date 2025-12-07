@@ -15,7 +15,7 @@ class TestEnforceSkeleton:
     def test_stdin_produces_valid_json(self, write_simple_input: dict) -> None:
         """Verify --stdin mode outputs valid hook JSON."""
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin"],
             input=json.dumps(write_simple_input),
             capture_output=True,
             text=True,
@@ -27,7 +27,7 @@ class TestEnforceSkeleton:
     def test_pretooluse_output_format(self, write_simple_input: dict) -> None:
         """Verify PreToolUse output has correct structure."""
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin"],
             input=json.dumps(write_simple_input),
             capture_output=True,
             text=True,
@@ -41,7 +41,7 @@ class TestEnforceSkeleton:
     def test_empty_input_succeeds(self) -> None:
         """Verify empty input doesn't crash."""
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin"],
             input="{}",
             capture_output=True,
             text=True,
@@ -51,7 +51,7 @@ class TestEnforceSkeleton:
     def test_missing_stdin_flag_errors(self) -> None:
         """Verify missing --stdin flag produces error."""
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check"],
             capture_output=True,
             text=True,
         )
@@ -91,7 +91,7 @@ class TestEnforcement:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -131,7 +131,7 @@ class TestEnforcement:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -171,7 +171,7 @@ class TestEnforcement:
 
         # With --severity error, warning should be ignored
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -182,7 +182,7 @@ class TestEnforcement:
 
         # With --severity warning, should be caught
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "warning"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "warning"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -245,7 +245,7 @@ class TestEndToEnd:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -267,7 +267,7 @@ class TestEndToEnd:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -290,7 +290,7 @@ class TestEndToEnd:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -317,7 +317,7 @@ class TestEndToEnd:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -339,7 +339,7 @@ class TestEndToEnd:
         }
 
         proc = subprocess.run(
-            [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "warning"],
+            [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "warning"],
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
@@ -390,7 +390,7 @@ class TestPerformance:
         for _ in range(5):
             start = time.time()
             proc = subprocess.run(
-                [sys.executable, "-m", "tools.cli", "enforce", "--stdin", "--severity", "error"],
+                [sys.executable, "-m", "tools.cli", "enforce", "check", "--stdin", "--severity", "error"],
                 input=json.dumps(hook_input),
                 capture_output=True,
                 text=True,

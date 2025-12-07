@@ -2,6 +2,38 @@
 
 All notable changes to Phaser will be documented in this file.
 
+## [1.8.0] - 2025-12-07
+
+### Added
+
+#### Hook-Based Contract Enforcement (`phaser enforce`)
+
+- `phaser enforce check --stdin` — Check contracts against proposed file changes (for hooks)
+- `phaser enforce install` — Install hook configuration for Claude Code
+- PreToolUse hook blocks `error`-severity violations
+- PostToolUse hook warns about `warning`-severity violations
+- Inline ignore directives: `# phaser:ignore <rule-id>`
+- Support for Python, JavaScript, Swift, Go, HTML, CSS comment styles
+- Contracts loaded from `.claude/contracts/` (project) and `~/.phaser/contracts/` (user)
+
+#### New Modules
+
+- `tools/enforce.py` — Main enforcement engine
+- `tools/tool_input.py` — Hook input parsing
+- `tools/ignore_parser.py` — Ignore directive parsing
+- `tools/contract_loader.py` — Contract loading and validation
+
+#### Specifications
+
+- `docs/specs/enforce.md` — Hook-based enforcement PRD
+
+### Stats
+
+- 56 new tests (630 → 686 total)
+- 4 new modules, ~1200 lines
+
+---
+
 ## [1.7.0] - 2025-12-06
 
 ### Added

@@ -62,7 +62,7 @@ from tools.replay import cli as replay_cli
 from tools.negotiate import cli as negotiate_cli
 from tools.reverse import cli as reverse_cli
 from tools.simulate import cli as simulate_cli
-from tools.enforce import enforce_command
+from tools.enforce import enforce_command, install_command
 
 
 @click.group()
@@ -87,7 +87,17 @@ cli.add_command(insights_cli, name="insights")
 cli.add_command(replay_cli, name="replay")
 cli.add_command(reverse_cli, name="reverse")
 cli.add_command(negotiate_cli, name="negotiate")
-cli.add_command(enforce_command, name="enforce")
+
+
+# Create enforce group with subcommands
+@cli.group("enforce")
+def enforce_group() -> None:
+    """Contract enforcement commands."""
+    pass
+
+
+enforce_group.add_command(enforce_command, name="check")
+enforce_group.add_command(install_command, name="install")
 
 
 @cli.command()

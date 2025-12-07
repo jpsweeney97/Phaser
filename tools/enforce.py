@@ -232,5 +232,83 @@ def enforce_command(
     sys.exit(0)
 
 
+HOOK_CONFIG = {
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "phaser enforce check --stdin --severity error",
+                        "timeout": 60,
+                    }
+                ],
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "phaser enforce check --stdin --severity warning",
+                        "timeout": 60,
+                    }
+                ],
+            }
+        ],
+    }
+}
+
+
+@click.command("install")
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "local"]),
+    default="project",
+    help="Where to install hooks",
+)
+@click.option("--dry-run", is_flag=True, help="Print config without writing")
+@click.option("--force", is_flag=True, help="Overwrite existing hooks")
+def install_command(scope: str, dry_run: bool, force: bool) -> None:
+    """Install hook configuration for Claude Code."""
+    # Determine target file
+    if scope == "user":
+        settings_path = Path.home() / ".claude" / "settings.json"
+    elif scope == "project":
+        settings_path = Path(".claude") / "settings.json"
+    else:  # local
+        settings_path = Path(".claude") / "settings.local.json"
+
+    if dry_run:
+        click.echo(f"Would write to: {settings_path}")
+        click.echo(json.dumps(HOOK_CONFIG, indent=2))
+        return
+
+    # Create directory if needed
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load existing or create new
+    existing: dict = {}
+    if settings_path.exists():
+        with open(settings_path) as f:
+            existing = json.load(f)
+
+    # Check for existing hooks
+    if "hooks" in existing and not force:
+        click.echo("Hooks already configured. Use --force to overwrite.", err=True)
+        sys.exit(1)
+
+    # Merge
+    existing["hooks"] = HOOK_CONFIG["hooks"]
+
+    # Write
+    with open(settings_path, "w") as f:
+        json.dump(existing, f, indent=2)
+
+    click.echo(f"Installed hooks to {settings_path}")
+
+
 if __name__ == "__main__":
     enforce_command()
