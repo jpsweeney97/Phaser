@@ -2,6 +2,41 @@
 
 All notable changes to Phaser will be documented in this file.
 
+## [1.7.0] - 2025-12-06
+
+### Added
+
+#### Analytics (`phaser analytics`)
+
+- `phaser analytics show` — Display execution history with metrics
+- `phaser analytics show --format json|csv|markdown` — Export formats
+- `phaser analytics export <file>` — Export to file
+- `phaser analytics import <report.md>` — Import from EXECUTION_REPORT.md
+- `phaser analytics clear` — Clear analytics data (with --dry-run, --force)
+
+#### Analytics Data Model
+
+- `ExecutionRecord` — Full audit execution with computed properties
+- `PhaseRecord` — Individual phase results
+- `AggregatedStats` — Cross-execution statistics
+- `AnalyticsQuery` — Flexible filtering (date range, status, project)
+- Persistent storage in `.phaser/analytics/` per project
+
+#### Specifications
+
+- `docs/specs/specs-analytics-v1.md` — Analytics feature specification
+
+### Changed
+
+- Version bumped to 1.7.0
+
+### Stats
+
+- 131 new tests (499 → 630 total)
+- 3,500+ lines added across analytics module, CLI, and tests
+
+---
+
 ## [1.5.0] - 2025-12-05
 
 ### Added
