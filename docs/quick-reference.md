@@ -277,4 +277,4 @@ rm -rf .audit/
 
 ---
 
-*Phaser v1.2*
+*Phaser v1.7*

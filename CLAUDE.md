@@ -128,4 +128,4 @@ See `docs/creating-audits.md` for detailed instructions.
 
 ---
 
-*Phaser v1.1*
+*Phaser v1.7*

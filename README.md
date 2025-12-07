@@ -4,7 +4,7 @@ Audit automation for Claude Code.
 
 ---
 
-## What's New in v1.5
+## What's New in v1.7
 
 - **Reverse Audit:** Generate audit documents from existing git history
 - **Phase Negotiation:** Customize phases before execution (split, merge, reorder, skip)
@@ -208,7 +208,7 @@ See `examples/impromptu-setup-block.md` for a complete audit of a macOS SwiftUI 
 
 ## CLI Reference
 
-Phaser v1.5 provides a unified CLI for all operations:
+Phaser v1.7 provides a unified CLI for all operations:
 
 ```bash
 phaser --help              # Show all commands
@@ -325,4 +325,4 @@ phaser ci init --python-version 3.12
 
 ---
 
-*Phaser v1.5.0*
+*Phaser v1.7.0*
