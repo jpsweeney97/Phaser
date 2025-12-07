@@ -62,6 +62,7 @@ from tools.replay import cli as replay_cli
 from tools.negotiate import cli as negotiate_cli
 from tools.reverse import cli as reverse_cli
 from tools.simulate import cli as simulate_cli
+from tools.enforce import enforce_command
 
 
 @click.group()
@@ -86,6 +87,7 @@ cli.add_command(insights_cli, name="insights")
 cli.add_command(replay_cli, name="replay")
 cli.add_command(reverse_cli, name="reverse")
 cli.add_command(negotiate_cli, name="negotiate")
+cli.add_command(enforce_command, name="enforce")
 
 
 @cli.command()
