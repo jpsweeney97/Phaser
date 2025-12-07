@@ -1,0 +1,14 @@
+{
+  "session_id": "test-session",
+  "transcript_path": "/tmp/transcript.jsonl",
+  "cwd": "/tmp/project",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/tmp/project/src/app.py",
+    "old_str": "print('hello')",
+    "new_str": "print('world')"
+  },
+  "tool_use_id": "toolu_test456"
+}

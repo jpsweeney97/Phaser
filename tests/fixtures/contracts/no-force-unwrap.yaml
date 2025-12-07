@@ -1,0 +1,7 @@
+rule_id: no-force-unwrap
+type: forbid_pattern
+pattern: '\w+!\s*(?://|$)'
+file_glob: '**/*.swift'
+message: 'Avoid force unwrapping optionals.'
+severity: error
+enabled: true

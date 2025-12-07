@@ -1,0 +1,7 @@
+rule_id: require-docstring
+type: require_pattern
+pattern: '^\s*"""'
+file_glob: '**/*.py'
+message: 'Python files must have a docstring.'
+severity: warning
+enabled: true

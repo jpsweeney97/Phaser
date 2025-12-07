@@ -1,0 +1,7 @@
+rule_id: invalid-regex
+type: forbid_pattern
+pattern: '(*invalid'
+file_glob: '**/*.py'
+message: 'This regex is invalid.'
+severity: error
+enabled: true

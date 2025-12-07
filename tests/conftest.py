@@ -1,5 +1,6 @@
 """Shared pytest fixtures for Phaser tests."""
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -8,6 +9,34 @@ import pytest
 
 from tools.storage import PhaserStorage
 from tools.events import EventEmitter
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def hook_inputs_dir() -> Path:
+    """Return path to hook input fixtures."""
+    return FIXTURES_DIR / "hook_inputs"
+
+
+@pytest.fixture
+def contracts_dir() -> Path:
+    """Return path to contract fixtures."""
+    return FIXTURES_DIR / "contracts"
+
+
+@pytest.fixture
+def write_simple_input(hook_inputs_dir: Path) -> dict:
+    """Load write_simple.json fixture."""
+    with open(hook_inputs_dir / "write_simple.json") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def edit_simple_input(hook_inputs_dir: Path) -> dict:
+    """Load edit_simple.json fixture."""
+    with open(hook_inputs_dir / "edit_simple.json") as f:
+        return json.load(f)
 
 
 @pytest.fixture
