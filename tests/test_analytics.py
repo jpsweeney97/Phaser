@@ -1,7 +1,7 @@
 """Tests for analytics module."""
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -117,7 +117,7 @@ class TestPhaseRecord:
 
     def test_create_full(self):
         """Test creating with all fields."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = PhaseRecord(
             phase_number=5,
             title="Complex Phase",
@@ -248,8 +248,8 @@ class TestExecutionRecord:
             project_name="Test",
             project_path="/test",
             branch="test",
-            started_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(timezone.utc),
             phaser_version="1.0",
             status=ExecutionStatus.PARTIAL,
             phases_planned=10,
@@ -272,8 +272,8 @@ class TestExecutionRecord:
             project_name="Test",
             project_path="/test",
             branch="test",
-            started_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(timezone.utc),
             phaser_version="1.0",
             status=ExecutionStatus.FAILED,
             phases_planned=0,

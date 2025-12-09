@@ -11,7 +11,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -204,7 +204,7 @@ class ExecutionRecord:
 
     # Raw
     report_path: str = ""
-    imported_at: datetime = field(default_factory=datetime.utcnow)
+    imported_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def duration_seconds(self) -> float:
@@ -279,7 +279,7 @@ class ExecutionRecord:
             imported_at=(
                 datetime.fromisoformat(data["imported_at"])
                 if data.get("imported_at")
-                else datetime.utcnow()
+                else datetime.now(timezone.utc)
             ),
         )
 
@@ -676,7 +676,7 @@ def update_index(project_dir: Path) -> None:
     index_data = {
         "schema_version": ANALYTICS_SCHEMA_VERSION,
         "project_name": project_dir.name,
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
         "execution_count": len(records),
         "executions": [
             {
@@ -1276,7 +1276,7 @@ def format_table(
     lines.append("-" * 70)
 
     # Table header
-    lines.append(f"{'Date':<12} {'Document':<28} {'Status':<8} {'Duration':<10} {'Δ Tests':<8}")
+    lines.append(f"{'Date':<12} {'Document':<28} {'Status':<8} {'Duration':<10} {'Î” Tests':<8}")
     lines.append("-" * 70)
 
     # Rows
@@ -1313,7 +1313,7 @@ def format_table(
         f"Summary: {stats.total_executions} executions | "
         f"{stats.successful} successful ({success_pct}%) | "
         f"Avg: {avg_duration} | "
-        f"Total Δ: {delta_sign}{stats.total_test_delta} tests"
+        f"Total Î”: {delta_sign}{stats.total_test_delta} tests"
     )
 
     return "\n".join(lines)
@@ -1344,7 +1344,7 @@ def format_json(
         },
         "executions": [r.to_dict() for r in records],
         "stats": stats.to_dict(),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     return json.dumps(data, indent=2)
 
@@ -1371,7 +1371,7 @@ def format_markdown(
     title = f"{project_name} Analytics Report" if project_name else "Phaser Analytics Report"
     lines.append(f"# {title}")
     lines.append("")
-    lines.append(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
     lines.append("")
 
     # Summary table
