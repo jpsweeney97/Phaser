@@ -97,30 +97,37 @@ class ValidationReport:
 
     @property
     def passed(self) -> int:
+        """Count of checks that passed."""
         return sum(1 for e in self.executions if e.result == CheckResult.PASS)
 
     @property
     def failed(self) -> int:
+        """Count of checks that failed."""
         return sum(1 for e in self.executions if e.result == CheckResult.FAIL)
 
     @property
     def skipped(self) -> int:
+        """Count of checks that were skipped."""
         return sum(1 for e in self.executions if e.result == CheckResult.SKIP)
 
     @property
     def errors(self) -> int:
+        """Count of checks that errored during execution."""
         return sum(1 for e in self.executions if e.result == CheckResult.ERROR)
 
     @property
     def total(self) -> int:
+        """Total number of check executions."""
         return len(self.executions)
 
     @property
     def success(self) -> bool:
+        """True if no failures or errors occurred."""
         return self.failed == 0 and self.errors == 0
 
     @property
     def duration_ms(self) -> int:
+        """Total validation duration in milliseconds."""
         return int((self.end_time - self.start_time) * 1000)
 
 
@@ -295,13 +302,13 @@ def run_evaluation_suite(
 
         if verbose:
             if execution.result == CheckResult.PASS:
-                click.echo(click.style(" ✓", fg="green"))
+                click.echo(click.style(" âœ“", fg="green"))
             elif execution.result == CheckResult.FAIL:
-                click.echo(click.style(" ✗", fg="red"))
+                click.echo(click.style(" âœ—", fg="red"))
             elif execution.result == CheckResult.SKIP:
-                click.echo(click.style(" ⏭", fg="yellow"))
+                click.echo(click.style(" â­", fg="yellow"))
             else:
-                click.echo(click.style(" ⚠", fg="yellow"))
+                click.echo(click.style(" âš ", fg="yellow"))
 
         if fail_fast and execution.result in (CheckResult.FAIL, CheckResult.ERROR):
             break
@@ -349,7 +356,7 @@ def format_report_table(report: ValidationReport) -> str:
 
         # Show error details for failures
         if execution.result == CheckResult.FAIL and execution.error_message:
-            lines.append(f"         └─ {execution.error_message}")
+            lines.append(f"         â””â”€ {execution.error_message}")
         if execution.result == CheckResult.FAIL and execution.stderr:
             for stderr_line in execution.stderr.strip().split("\n")[:3]:
                 lines.append(f"            {stderr_line}")
@@ -411,7 +418,7 @@ def format_report_markdown(report: ValidationReport) -> str:
     lines.append("# Validation Report")
     lines.append("")
     lines.append(f"**Source:** `{report.suite.source_file}`")
-    lines.append(f"**Status:** {'✅ PASSED' if report.success else '❌ FAILED'}")
+    lines.append(f"**Status:** {'âœ… PASSED' if report.success else 'âŒ FAILED'}")
     lines.append(f"**Duration:** {report.duration_ms}ms")
     lines.append("")
 
@@ -436,11 +443,11 @@ def format_report_markdown(report: ValidationReport) -> str:
     for execution in report.executions:
         cc = execution.check_case
         result_emoji = {
-            CheckResult.PASS: "✅",
-            CheckResult.FAIL: "❌",
-            CheckResult.SKIP: "⏭️",
-            CheckResult.ERROR: "⚠️",
-        }.get(execution.result, "❓")
+            CheckResult.PASS: "âœ…",
+            CheckResult.FAIL: "âŒ",
+            CheckResult.SKIP: "â­ï¸",
+            CheckResult.ERROR: "âš ï¸",
+        }.get(execution.result, "â“")
 
         lines.append(
             f"| {cc.id} | {cc.check_type.value} | {result_emoji} {execution.result.value} | "
@@ -714,9 +721,9 @@ def all_command(audit_dir: str, verbose: bool, format: str) -> None:
         total_failed += report.failed
 
         if report.success:
-            click.echo(click.style(" ✓", fg="green"))
+            click.echo(click.style(" âœ“", fg="green"))
         else:
-            click.echo(click.style(f" ✗ ({report.failed} failed)", fg="red"))
+            click.echo(click.style(f" âœ— ({report.failed} failed)", fg="red"))
 
     # Summary
     click.echo("")

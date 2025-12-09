@@ -50,6 +50,7 @@ class AuditSource:
     phase: int
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "id": self.id,
             "slug": self.slug,
@@ -59,6 +60,7 @@ class AuditSource:
 
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> AuditSource:
+        """Create AuditSource from dictionary."""
         return cls(
             id=str(d["id"]),
             slug=str(d["slug"]),
@@ -80,6 +82,7 @@ class Rule:
     rationale: str = ""
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "id": self.id,
             "type": self.type.value,
@@ -92,6 +95,7 @@ class Rule:
 
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> Rule:
+        """Create Rule from dictionary."""
         return cls(
             id=str(d["id"]),
             type=RuleType(str(d["type"])),
@@ -114,6 +118,7 @@ class Contract:
     enabled: bool = True
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "version": self.version,
             "audit_source": self.audit_source.to_dict(),
@@ -124,6 +129,7 @@ class Contract:
 
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> Contract:
+        """Create Contract from dictionary."""
         audit_source_data = d.get("audit_source", {})
         rule_data = d.get("rule", {})
         if not isinstance(audit_source_data, dict):
@@ -154,6 +160,7 @@ class Violation:
     message: str
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "path": self.path,
             "line": self.line,
@@ -177,6 +184,7 @@ class CheckResult:
             self.checked_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "contract_id": self.contract_id,
             "rule_id": self.rule_id,

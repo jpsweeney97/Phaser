@@ -19,7 +19,7 @@ from typing import Any
 # Constants
 # =============================================================================
 
-PHASER_VERSION = "1.7.0"
+PHASER_VERSION = "1.8.1"
 
 SETUP_START_MARKER = "=== AUDIT SETUP START ==="
 SETUP_END_MARKER = "=== AUDIT SETUP END ==="
@@ -93,6 +93,7 @@ class ValidationIssue:
     message: str  # Human-readable message
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "level": self.level,
             "phase": self.phase,
@@ -116,6 +117,7 @@ class ValidationResult:
     token_estimates: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "file": self.source_path,
             "valid": self.valid,
@@ -139,6 +141,7 @@ class PhaseFile:
     purpose: str  # "Reverse audit module"
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "path": self.path,
             "action": self.action.value,
@@ -172,6 +175,7 @@ class Phase:
         return int(len(self.raw_content) / 3.5)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "number": self.number,
             "title": self.title,
@@ -200,21 +204,26 @@ class AuditDocument:
 
     @property
     def phase_count(self) -> int:
+        """Number of phases in this document."""
         return len(self.phases)
 
     @property
     def phase_start(self) -> int:
+        """First phase number in this document."""
         return self.phases[0].number if self.phases else 0
 
     @property
     def phase_end(self) -> int:
+        """Last phase number in this document."""
         return self.phases[-1].number if self.phases else 0
 
     @property
     def phase_range(self) -> str:
+        """Phase range as 'start-end' string."""
         return f"{self.phase_start}-{self.phase_end}"
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "title": self.title,
             "document_number": self.document_number,
@@ -245,6 +254,7 @@ class PrepareResult:
     prompt: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "document": self.document.to_dict(),
             "validation": self.validation.to_dict(),
@@ -1175,7 +1185,7 @@ After all phases complete, generate EXECUTION_REPORT.md:
 
 ## Execution Summary
 
-**Result:** [✅ All phases completed | ⚠️ Completed with issues | ❌ Failed]
+**Result:** [âœ… All phases completed | âš ï¸ Completed with issues | âŒ Failed]
 
 **Phases:** [completed count] of {phase_count} completed
 
@@ -1220,7 +1230,7 @@ From Document Overview:
 
 | Phase | Criterion | Status |
 |-------|-----------|--------|
-[For each phase, list each acceptance criterion with ✅ or ❌]
+[For each phase, list each acceptance criterion with âœ… or âŒ]
 
 ## Issues Encountered
 

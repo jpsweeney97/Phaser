@@ -187,7 +187,7 @@ Phaser/
 ├── global-claude-snippet.md  ← Add to ~/.claude/CLAUDE.md
 ├── specs/                    ← Feature specifications
 ├── tools/                    ← CLI modules
-├── tests/                    ← Test suite (685+ tests)
+├── tests/                    ← Test suite (845+ tests)
 ├── templates/                ← Audit templates
 ├── examples/                 ← Sample audits
 └── docs/                     ← Additional documentation
@@ -364,4 +364,4 @@ phaser ci init --python-version 3.12
 
 ---
 
-*Phaser v1.8.0*
+*Phaser v1.8.1*

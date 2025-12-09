@@ -26,10 +26,17 @@ Phaser/
 ├── CLAUDE.md              ← You are here
 ├── README.md              ← User-facing documentation
 ├── global-claude-snippet.md ← One-time addition to ~/.claude/CLAUDE.md
+├── specs/                 ← Feature specifications
+│   ├── bridge.md          ← Setup block parsing
+│   ├── cli.md             ← CLI command reference
+│   ├── ignore_parser.md   ← Inline ignore directives
+│   ├── tool_input.md      ← Hook input reconstruction
+│   └── ...
 ├── templates/
 │   ├── CONTEXT.template.md   ← Template for .audit/CONTEXT.md
 │   ├── CURRENT.template.md   ← Template for .audit/CURRENT.md (full report)
 │   └── phase.template.md     ← Template for individual phase files
+├── tools/                 ← CLI modules (845+ tests)
 ├── examples/
 │   └── impromptu-setup-block.md ← Complete example audit
 └── docs/
@@ -128,4 +135,4 @@ See `docs/creating-audits.md` for detailed instructions.
 
 ---
 
-*Phaser v1.7*
+*Phaser v1.8.1*

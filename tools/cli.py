@@ -1,5 +1,5 @@
 """
-Phaser CLI — Unified command-line interface for audit automation.
+Phaser CLI â€” Unified command-line interface for audit automation.
 
 Usage:
     phaser <command> [options]
@@ -65,12 +65,12 @@ from tools.validate import cli as verify_cli
 
 
 @click.group()
-@click.version_option(version="1.5.0", prog_name="phaser")
+@click.version_option(version="1.8.1", prog_name="phaser")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress non-essential output")
 @click.pass_context
 def cli(ctx: click.Context, verbose: bool, quiet: bool) -> None:
-    """Phaser — Audit automation for Claude Code."""
+    """Phaser â€” Audit automation for Claude Code."""
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
@@ -173,7 +173,7 @@ def manifest(root: str, output: str | None, output_format: str) -> None:
 @cli.command()
 def version() -> None:
     """Show version and feature information."""
-    click.echo("Phaser v1.5.0")
+    click.echo("Phaser v1.8.1")
     click.echo()
     click.echo("Features:")
     click.echo("  * Storage & Events (Learning Loop)")
@@ -185,6 +185,8 @@ def version() -> None:
     click.echo("  * Insights & Analytics")
     click.echo("  * Reverse Audit")
     click.echo("  * Phase Negotiation")
+    click.echo("  * Hook-Based Enforcement")
+    click.echo("  * Analytics")
 
 
 @cli.command()
@@ -238,35 +240,35 @@ def validate(audit_file: str, strict: bool, output_json: bool) -> None:
         click.echo(json.dumps(result.to_dict(), indent=2))
     else:
         # Console output
-        click.echo(f"\nPhaser v{PHASER_VERSION} — Document Validation\n")
+        click.echo(f"\nPhaser v{PHASER_VERSION} â€” Document Validation\n")
         click.echo(f"Validating {audit_path.name}...\n")
 
         click.echo("Document Structure")
         if result.document_title:
-            click.echo(f"  ✓ Document header: {result.document_title}")
+            click.echo(f"  âœ“ Document header: {result.document_title}")
         else:
-            click.echo("  ⚠ Missing document header")
+            click.echo("  âš  Missing document header")
 
         if result.phase_count > 0:
             click.echo(
-                f"  ✓ {result.phase_count} phases detected ({result.phase_range})"
+                f"  âœ“ {result.phase_count} phases detected ({result.phase_range})"
             )
         else:
-            click.echo("  ✗ No phases detected")
+            click.echo("  âœ— No phases detected")
 
         # Show errors
         if result.errors:
             click.echo("\nErrors")
             for err in result.errors:
                 phase_str = f"Phase {err.phase}: " if err.phase else ""
-                click.echo(f"  ✗ {phase_str}{err.message}")
+                click.echo(f"  âœ— {phase_str}{err.message}")
 
         # Show warnings
         if result.warnings:
             click.echo("\nWarnings")
             for warn in result.warnings:
                 phase_str = f"Phase {warn.phase}: " if warn.phase else ""
-                click.echo(f"  ⚠ {phase_str}{warn.message}")
+                click.echo(f"  âš  {phase_str}{warn.message}")
 
         # Token estimates
         if result.token_estimates:
@@ -274,7 +276,7 @@ def validate(audit_file: str, strict: bool, output_json: bool) -> None:
             for key, value in result.token_estimates.items():
                 if key != "total":
                     phase_num = key.replace("phase_", "")
-                    status = "✓" if value < 20000 else ("⚠" if value < 25000 else "✗")
+                    status = "âœ“" if value < 20000 else ("âš " if value < 25000 else "âœ—")
                     click.echo(f"  Phase {phase_num}: {value:,} tokens {status}")
             if "total" in result.token_estimates:
                 click.echo(f"  Total: {result.token_estimates['total']:,} tokens")
@@ -286,11 +288,11 @@ def validate(audit_file: str, strict: bool, output_json: bool) -> None:
 
         if result.valid:
             if result.warnings:
-                click.echo("\n✓ Document is valid (with warnings)")
+                click.echo("\nâœ“ Document is valid (with warnings)")
             else:
-                click.echo("\n✓ Document is valid")
+                click.echo("\nâœ“ Document is valid")
         else:
-            click.echo("\n✗ Validation failed. Fix errors before execution.")
+            click.echo("\nâœ— Validation failed. Fix errors before execution.")
 
     # Exit code
     raise SystemExit(0 if result.valid else 1)
@@ -331,7 +333,7 @@ def prepare(
     audit_path = Path(audit_file).resolve()
     project_path = Path(project).resolve()
 
-    click.echo(f"\nPhaser v{PHASER_VERSION} — Audit Bridge\n")
+    click.echo(f"\nPhaser v{PHASER_VERSION} â€” Audit Bridge\n")
 
     if dry_run:
         click.echo(f"[DRY RUN] Would prepare {audit_path.name}")
@@ -353,30 +355,30 @@ def prepare(
             click.echo(f"Validating {audit_path.name}...")
             if result.validation.errors:
                 for err in result.validation.errors:
-                    click.echo(f"  ✗ {err.message}")
+                    click.echo(f"  âœ— {err.message}")
             if result.validation.warnings:
                 for warn in result.validation.warnings:
-                    click.echo(f"  ⚠ {warn.message}")
+                    click.echo(f"  âš  {warn.message}")
             click.echo(
                 f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings\n"
             )
 
         # Files created
         click.echo("Preparing files...")
-        click.echo(f"  ✓ Created {result.meta_dir.name}/phaser-version")
-        click.echo(f"  ✓ Created {result.meta_dir.name}/baseline-tests")
-        click.echo(f"  ✓ Created {result.setup_file.relative_to(project_path)}")
+        click.echo(f"  âœ“ Created {result.meta_dir.name}/phaser-version")
+        click.echo(f"  âœ“ Created {result.meta_dir.name}/baseline-tests")
+        click.echo(f"  âœ“ Created {result.setup_file.relative_to(project_path)}")
         for pf in result.phase_files:
-            click.echo(f"  ✓ Created {pf.relative_to(project_path)}")
-        click.echo("  ✓ Copied AUDIT.md to project root\n")
+            click.echo(f"  âœ“ Created {pf.relative_to(project_path)}")
+        click.echo("  âœ“ Copied AUDIT.md to project root\n")
 
         # Prompt handling
         if not no_clipboard:
             try:
                 pyperclip.copy(result.prompt)
-                click.echo("✓ Execution prompt copied to clipboard")
+                click.echo("âœ“ Execution prompt copied to clipboard")
             except Exception:
-                click.echo("⚠ Could not copy to clipboard (pyperclip not available)")
+                click.echo("âš  Could not copy to clipboard (pyperclip not available)")
                 print_prompt = True
 
         if print_prompt:
@@ -385,7 +387,7 @@ def prepare(
             click.echo("--- END PROMPT ---\n")
 
     except (ParseError, ValidationError, FileExistsError) as e:
-        click.echo(f"✗ {e}", err=True)
+        click.echo(f"âœ— {e}", err=True)
         raise SystemExit(1)
 
 
@@ -424,7 +426,7 @@ def execute_cmd(
     audit_path = Path(audit_file).resolve()
     project_path = Path(project).resolve()
 
-    click.echo(f"\nPhaser v{PHASER_VERSION} — Audit Bridge\n")
+    click.echo(f"\nPhaser v{PHASER_VERSION} â€” Audit Bridge\n")
 
     if dry_run:
         click.echo(f"[DRY RUN] Would execute {audit_path.name}")
@@ -448,24 +450,24 @@ def execute_cmd(
             click.echo(f"Validating {audit_path.name}...")
             if result.validation.warnings:
                 for warn in result.validation.warnings:
-                    click.echo(f"  ⚠ {warn.message}")
+                    click.echo(f"  âš  {warn.message}")
             click.echo(
-                f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings ✓\n"
+                f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings âœ“\n"
             )
 
         # Show files created
         click.echo("Preparing files...")
-        click.echo(f"  ✓ Created {result.setup_file.relative_to(project_path)}")
+        click.echo(f"  âœ“ Created {result.setup_file.relative_to(project_path)}")
         for pf in result.phase_files:
-            click.echo(f"  ✓ Created {pf.relative_to(project_path)}")
-        click.echo("  ✓ Copied AUDIT.md to project root\n")
+            click.echo(f"  âœ“ Created {pf.relative_to(project_path)}")
+        click.echo("  âœ“ Copied AUDIT.md to project root\n")
 
         # Check Claude Code
         import shutil
 
         if not shutil.which("claude"):
             click.echo(
-                "✗ Claude Code not found. Install from https://claude.ai/code", err=True
+                "âœ— Claude Code not found. Install from https://claude.ai/code", err=True
             )
             raise SystemExit(1)
 
@@ -485,7 +487,7 @@ def execute_cmd(
         click.echo("Upon completion, EXECUTION_REPORT.md will be generated.")
 
     except (ParseError, ValidationError, ExecutionError, FileExistsError) as e:
-        click.echo(f"✗ {e}", err=True)
+        click.echo(f"âœ— {e}", err=True)
         raise SystemExit(1)
 
 
@@ -661,10 +663,10 @@ def analytics_import(report_file, recursive, force, project):
             record = import_execution_report(report, project_dir)
             save_execution(record, project_dir)
             imported += 1
-            click.echo(f"✓ Imported: {record.audit_document}")
+            click.echo(f"âœ“ Imported: {record.audit_document}")
         except (StorageError, AnalyticsImportError) as e:
             errors.append((report, str(e)))
-            click.echo(f"✗ Failed: {report.name} - {e}")
+            click.echo(f"âœ— Failed: {report.name} - {e}")
 
     click.echo(f"\nImported {imported} execution(s).")
     if errors:

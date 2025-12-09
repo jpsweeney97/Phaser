@@ -66,6 +66,7 @@ class FileEntry:
     is_executable: bool
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "path": self.path,
             "type": self.type,
@@ -77,6 +78,7 @@ class FileEntry:
 
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> FileEntry:
+        """Create FileEntry from dictionary."""
         return cls(
             path=str(d["path"]),
             type=str(d["type"]),
@@ -98,6 +100,7 @@ class Manifest:
     files: list[FileEntry] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "root": self.root,
             "timestamp": self.timestamp,
@@ -108,6 +111,7 @@ class Manifest:
 
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> Manifest:
+        """Create Manifest from dictionary."""
         files_data = d.get("files", [])
         if not isinstance(files_data, list):
             files_data = []
@@ -146,6 +150,7 @@ class FileChange:
     diff_lines: list[str] | None  # Unified diff for text files
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "path": self.path,
             "change_type": self.change_type,
@@ -169,6 +174,7 @@ class DiffResult:
     unchanged_count: int = 0
 
     def to_dict(self) -> dict[str, object]:
+        """Convert to dictionary for JSON serialization."""
         return {
             "before_timestamp": self.before_timestamp,
             "after_timestamp": self.after_timestamp,

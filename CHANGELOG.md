@@ -2,6 +2,39 @@
 
 All notable changes to Phaser will be documented in this file.
 
+## [1.8.1] - 2025-12-09
+
+### Fixed
+
+- **Storage:** Orphaned `.tmp` files no longer left behind when disk is full or permissions fail (F-005)
+- **Contract Loader:** YAML files containing lists instead of dicts now skip gracefully with warning instead of crashing
+- **Analytics:** Replaced deprecated `datetime.utcnow()` with timezone-aware `datetime.now(timezone.utc)`
+- **Analytics:** Fixed Unicode encoding corruption (mojibake) in emoji characters
+
+### Added
+
+#### Specification Documents
+
+- `specs/bridge.md` — Setup block parsing, validation rules, file generation
+- `specs/cli.md` — Full CLI command reference with options and exit codes
+- `specs/ignore_parser.md` — Inline ignore directive syntax by language
+- `specs/tool_input.md` — Hook input reconstruction behavior
+
+#### Test Coverage
+
+- 115 new tests across orchestration modules and edge cases
+- `test_audit_hooks.py` — 14 tests for lifecycle hooks
+- `test_audit_runner.py` — 23 tests for unified runner
+- `test_serialize.py` — 39 tests for post-audit serializer
+- `test_edge_cases.py` — 36 tests for boundary conditions
+
+### Changed
+
+- All public dataclass methods now have docstrings (bridge, contracts, diff, negotiate, validate)
+- Test suite expanded from 685 to 845 tests
+
+---
+
 ## [1.8.0] - 2025-12-07
 
 ### Added

@@ -41,6 +41,7 @@ class FileChange:
     description: str = ""
 
     def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
         return {
             "path": self.path,
             "action": self.action,
@@ -49,6 +50,7 @@ class FileChange:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'FileChange':
+        """Create FileChange from dictionary."""
         return cls(
             path=data["path"],
             action=data["action"],
@@ -86,6 +88,7 @@ class Phase:
         return len(self.files)
 
     def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
         return {
             "id": self.id,
             "number": self.number,
@@ -104,6 +107,7 @@ class Phase:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Phase':
+        """Create Phase from dictionary."""
         return cls(
             id=data["id"],
             number=data["number"],
@@ -131,6 +135,7 @@ class NegotiationOp:
     description: str = ""
 
     def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
         return {
             "op_type": self.op_type.value,
             "timestamp": self.timestamp,
@@ -141,6 +146,7 @@ class NegotiationOp:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'NegotiationOp':
+        """Create NegotiationOp from dictionary."""
         return cls(
             op_type=OpType(data["op_type"]),
             timestamp=data["timestamp"],
@@ -197,6 +203,7 @@ class NegotiationState:
         return None
 
     def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
         return {
             "original_phases": [p.to_dict() for p in self.original_phases],
             "current_phases": [p.to_dict() for p in self.current_phases],
@@ -210,6 +217,7 @@ class NegotiationState:
 
     @classmethod
     def from_dict(cls, data: dict) -> 'NegotiationState':
+        """Create NegotiationState from dictionary."""
         return cls(
             original_phases=[Phase.from_dict(p) for p in data["original_phases"]],
             current_phases=[Phase.from_dict(p) for p in data["current_phases"]],
