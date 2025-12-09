@@ -30,9 +30,6 @@ from tools.analytics import (
     AnalyticsQuery,
     ExecutionStatus,
     StorageError,
-    ImportError as AnalyticsImportError,
-    clear_analytics,
-    compute_project_stats,
     delete_execution,
     format_csv,
     format_json,
@@ -40,29 +37,31 @@ from tools.analytics import (
     format_table,
     import_execution_report,
     list_executions,
-    load_index,
     query_executions,
     save_execution,
 )
+from tools.analytics import (
+    ImportError as AnalyticsImportError,
+)
 from tools.branches import cli as branches_cli
 from tools.bridge import (
-    validate_document,
-    prepare_audit,
-    execute_audit,
-    ValidationError,
-    ParseError,
-    ExecutionError,
     PHASER_VERSION,
+    ExecutionError,
+    ParseError,
+    ValidationError,
+    prepare_audit,
+    validate_document,
 )
 from tools.ci import cli as ci_cli
 from tools.contracts import cli as contracts_cli
 from tools.diff import cli as diff_cli
+from tools.enforce import enforce_command, install_command
 from tools.insights import cli as insights_cli
-from tools.replay import cli as replay_cli
 from tools.negotiate import cli as negotiate_cli
+from tools.replay import cli as replay_cli
 from tools.reverse import cli as reverse_cli
 from tools.simulate import cli as simulate_cli
-from tools.enforce import enforce_command, install_command
+from tools.validate import cli as verify_cli
 
 
 @click.group()
@@ -87,6 +86,7 @@ cli.add_command(insights_cli, name="insights")
 cli.add_command(replay_cli, name="replay")
 cli.add_command(reverse_cli, name="reverse")
 cli.add_command(negotiate_cli, name="negotiate")
+cli.add_command(verify_cli, name="verify")
 
 
 # Create enforce group with subcommands
@@ -103,9 +103,13 @@ enforce_group.add_command(install_command, name="install")
 @cli.command()
 @click.option("--root", type=click.Path(exists=True), default=".")
 @click.option("--fail-on-error", is_flag=True, help="Exit 1 if any contract fails")
-@click.option("--format", "output_format", type=click.Choice(["text", "json"]), default="text")
+@click.option(
+    "--format", "output_format", type=click.Choice(["text", "json"]), default="text"
+)
 @click.pass_context
-def check(ctx: click.Context, root: str, fail_on_error: bool, output_format: str) -> None:
+def check(
+    ctx: click.Context, root: str, fail_on_error: bool, output_format: str
+) -> None:
     """
     Check all contracts against codebase.
 
@@ -131,10 +135,13 @@ def check(ctx: click.Context, root: str, fail_on_error: bool, output_format: str
     if fail_on_error and any(not r.passed for r in results):
         raise SystemExit(1)
 
+
 @cli.command()
 @click.argument("root", type=click.Path(exists=True), default=".")
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
-@click.option("--format", "output_format", type=click.Choice(["yaml", "json"]), default="yaml")
+@click.option(
+    "--format", "output_format", type=click.Choice(["yaml", "json"]), default="yaml"
+)
 def manifest(root: str, output: str | None, output_format: str) -> None:
     """
     Capture manifest of directory.
@@ -162,6 +169,7 @@ def manifest(root: str, output: str | None, output_format: str) -> None:
     else:
         click.echo(content)
 
+
 @cli.command()
 def version() -> None:
     """Show version and feature information."""
@@ -177,6 +185,7 @@ def version() -> None:
     click.echo("  * Insights & Analytics")
     click.echo("  * Reverse Audit")
     click.echo("  * Phase Negotiation")
+
 
 @cli.command()
 @click.option("--global", "global_", is_flag=True, help="Show global .phaser/ location")
@@ -239,7 +248,9 @@ def validate(audit_file: str, strict: bool, output_json: bool) -> None:
             click.echo("  ⚠ Missing document header")
 
         if result.phase_count > 0:
-            click.echo(f"  ✓ {result.phase_count} phases detected ({result.phase_range})")
+            click.echo(
+                f"  ✓ {result.phase_count} phases detected ({result.phase_range})"
+            )
         else:
             click.echo("  ✗ No phases detected")
 
@@ -269,7 +280,7 @@ def validate(audit_file: str, strict: bool, output_json: bool) -> None:
                 click.echo(f"  Total: {result.token_estimates['total']:,} tokens")
 
         # Summary
-        click.echo(f"\nSummary")
+        click.echo("\nSummary")
         click.echo(f"  Errors:   {len(result.errors)}")
         click.echo(f"  Warnings: {len(result.warnings)}")
 
@@ -287,8 +298,15 @@ def validate(audit_file: str, strict: bool, output_json: bool) -> None:
 
 @cli.command()
 @click.argument("audit_file", type=click.Path(exists=True))
-@click.option("--project", type=click.Path(), default=".", help="Target project directory")
-@click.option("--output-dir", type=click.Path(), default="audit-phases", help="Phase files directory")
+@click.option(
+    "--project", type=click.Path(), default=".", help="Target project directory"
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default="audit-phases",
+    help="Phase files directory",
+)
 @click.option("--no-clipboard", is_flag=True, help="Don't copy prompt to clipboard")
 @click.option("--print-prompt", is_flag=True, help="Print prompt to stdout")
 @click.option("--dry-run", is_flag=True, help="Show what would be done")
@@ -339,7 +357,9 @@ def prepare(
             if result.validation.warnings:
                 for warn in result.validation.warnings:
                     click.echo(f"  ⚠ {warn.message}")
-            click.echo(f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings\n")
+            click.echo(
+                f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings\n"
+            )
 
         # Files created
         click.echo("Preparing files...")
@@ -348,7 +368,7 @@ def prepare(
         click.echo(f"  ✓ Created {result.setup_file.relative_to(project_path)}")
         for pf in result.phase_files:
             click.echo(f"  ✓ Created {pf.relative_to(project_path)}")
-        click.echo(f"  ✓ Copied AUDIT.md to project root\n")
+        click.echo("  ✓ Copied AUDIT.md to project root\n")
 
         # Prompt handling
         if not no_clipboard:
@@ -371,9 +391,18 @@ def prepare(
 
 @cli.command("execute")
 @click.argument("audit_file", type=click.Path(exists=True))
-@click.option("--project", type=click.Path(), default=".", help="Target project directory")
-@click.option("--output-dir", type=click.Path(), default="audit-phases", help="Phase files directory")
-@click.option("--no-permissions", is_flag=True, help="Don't use --dangerously-skip-permissions")
+@click.option(
+    "--project", type=click.Path(), default=".", help="Target project directory"
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default="audit-phases",
+    help="Phase files directory",
+)
+@click.option(
+    "--no-permissions", is_flag=True, help="Don't use --dangerously-skip-permissions"
+)
 @click.option("--dry-run", is_flag=True, help="Show what would be done")
 @click.option("--skip-validation", is_flag=True, help="Skip document validation")
 @click.option("--force", is_flag=True, help="Overwrite existing audit-phases/")
@@ -420,19 +449,24 @@ def execute_cmd(
             if result.validation.warnings:
                 for warn in result.validation.warnings:
                     click.echo(f"  ⚠ {warn.message}")
-            click.echo(f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings ✓\n")
+            click.echo(
+                f"Validation: {len(result.validation.errors)} errors, {len(result.validation.warnings)} warnings ✓\n"
+            )
 
         # Show files created
         click.echo("Preparing files...")
         click.echo(f"  ✓ Created {result.setup_file.relative_to(project_path)}")
         for pf in result.phase_files:
             click.echo(f"  ✓ Created {pf.relative_to(project_path)}")
-        click.echo(f"  ✓ Copied AUDIT.md to project root\n")
+        click.echo("  ✓ Copied AUDIT.md to project root\n")
 
         # Check Claude Code
         import shutil
+
         if not shutil.which("claude"):
-            click.echo("✗ Claude Code not found. Install from https://claude.ai/code", err=True)
+            click.echo(
+                "✗ Claude Code not found. Install from https://claude.ai/code", err=True
+            )
             raise SystemExit(1)
 
         # Launch Claude Code
@@ -440,6 +474,7 @@ def execute_cmd(
         click.echo("  Passing prompt via stdin...\n")
 
         from tools.bridge import launch_claude_code
+
         process = launch_claude_code(
             prompt=result.prompt,
             project_dir=result.project_dir,
@@ -466,7 +501,9 @@ def analytics():
 
 
 @analytics.command("show")
-@click.option("--last", "limit", type=int, default=5, help="Number of executions to show")
+@click.option(
+    "--last", "limit", type=int, default=5, help="Number of executions to show"
+)
 @click.option("--since", type=click.DateTime(), help="Show executions since date")
 @click.option("--until", type=click.DateTime(), help="Show executions until date")
 @click.option(
@@ -507,7 +544,9 @@ def analytics_show(limit, since, until, status, output_format, verbose, project)
     elif output_format == "markdown":
         output = format_markdown(records, stats, project_dir.name)
     else:
-        output = format_table(records, stats, verbose=verbose, project_name=project_dir.name)
+        output = format_table(
+            records, stats, verbose=verbose, project_name=project_dir.name
+        )
 
     click.echo(output)
 
@@ -635,6 +674,7 @@ def analytics_import(report_file, recursive, force, project):
 def main() -> None:
     """Entry point for the phaser command."""
     cli(obj={})
+
 
 if __name__ == "__main__":
     main()

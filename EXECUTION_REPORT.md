@@ -2,17 +2,17 @@
 
 ## Metadata
 
-| Field | Value |
-|-------|-------|
-| Audit Document | enforce-v1 |
-| Document Title | Hook-Based Contract Enforcement |
-| Project | Phaser |
-| Project Path | /Users/jp/Projects/active/Phaser |
-| Tag | audit/2025-12-07-enforce-v1 |
-| Base Commit | fd55fbe (v1.7.0) |
-| Started | 2025-12-07 |
-| Completed | 2025-12-07 |
-| Phaser Version | 1.7.0 → 1.8.0 |
+| Field          | Value                            |
+| -------------- | -------------------------------- |
+| Audit Document | enforce-v1                       |
+| Document Title | Hook-Based Contract Enforcement  |
+| Project        | Phaser                           |
+| Project Path   | /Users/jp/Projects/active/Phaser |
+| Tag            | audit/2025-12-07-enforce-v1      |
+| Base Commit    | fd55fbe (v1.7.0)                 |
+| Started        | 2025-12-07                       |
+| Completed      | 2025-12-07                       |
+| Phaser Version | 1.7.0 → 1.8.0                    |
 
 ## Execution Summary
 
@@ -20,16 +20,16 @@
 
 **Phases:** 8 of 8 completed
 
-| Phase | Title | Status | Commit |
-|-------|-------|--------|--------|
-| 1 | Steel Thread (CLI Skeleton) | ✅ | 8823d04 |
-| 2 | Test Harness + Fixtures | ✅ | 4f5116b |
-| 3 | Tool Input Parser | ✅ | be05551 |
-| 4 | Contract Loader | ✅ | 906f162 |
-| 5 | Enforcement Engine | ✅ | e55c7d4 |
-| 6 | Ignore Parser | ✅ | e210fe8 |
-| 7 | Integration + Performance | ✅ | 51ddf13 |
-| 8 | Documentation + Install | ✅ | eebed50 |
+| Phase | Title                       | Status | Commit  |
+| ----- | --------------------------- | ------ | ------- |
+| 1     | Steel Thread (CLI Skeleton) | ✅     | 8823d04 |
+| 2     | Test Harness + Fixtures     | ✅     | 4f5116b |
+| 3     | Tool Input Parser           | ✅     | be05551 |
+| 4     | Contract Loader             | ✅     | 906f162 |
+| 5     | Enforcement Engine          | ✅     | e55c7d4 |
+| 6     | Ignore Parser               | ✅     | e210fe8 |
+| 7     | Integration + Performance   | ✅     | 51ddf13 |
+| 8     | Documentation + Install     | ✅     | eebed50 |
 
 ## Test Results
 
@@ -43,13 +43,13 @@
 
 ### Test Breakdown by Module
 
-| Module | Tests |
-|--------|-------|
-| test_enforce.py | 13 |
-| test_tool_input.py | 13 |
-| test_contract_loader.py | 12 |
-| test_ignore_parser.py | 17 |
-| **Total New** | **55** |
+| Module                  | Tests  |
+| ----------------------- | ------ |
+| test_enforce.py         | 13     |
+| test_tool_input.py      | 13     |
+| test_contract_loader.py | 12     |
+| test_ignore_parser.py   | 17     |
+| **Total New**           | **55** |
 
 ## Git History
 
@@ -73,48 +73,48 @@ be05551 Add tool input parser (Phase 3)
 
 ### New Modules
 
-| File | Lines | Description |
-|------|-------|-------------|
-| tools/enforce.py | 314 | Main enforcement engine + CLI commands |
-| tools/tool_input.py | 103 | Hook input parsing, file state reconstruction |
-| tools/ignore_parser.py | 144 | Inline ignore directive parsing |
-| tools/contract_loader.py | 178 | Contract YAML loading and validation |
+| File                     | Lines | Description                                   |
+| ------------------------ | ----- | --------------------------------------------- |
+| tools/enforce.py         | 314   | Main enforcement engine + CLI commands        |
+| tools/tool_input.py      | 103   | Hook input parsing, file state reconstruction |
+| tools/ignore_parser.py   | 144   | Inline ignore directive parsing               |
+| tools/contract_loader.py | 178   | Contract YAML loading and validation          |
 
 ### New Tests
 
-| File | Lines | Description |
-|------|-------|-------------|
-| tests/test_enforce.py | 404 | Integration tests, end-to-end flows |
-| tests/test_tool_input.py | 109 | Write/Edit reconstruction tests |
-| tests/test_contract_loader.py | 183 | Contract validation tests |
-| tests/test_ignore_parser.py | 100 | Comment style detection tests |
+| File                          | Lines | Description                         |
+| ----------------------------- | ----- | ----------------------------------- |
+| tests/test_enforce.py         | 404   | Integration tests, end-to-end flows |
+| tests/test_tool_input.py      | 109   | Write/Edit reconstruction tests     |
+| tests/test_contract_loader.py | 183   | Contract validation tests           |
+| tests/test_ignore_parser.py   | 100   | Comment style detection tests       |
 
 ### Fixtures
 
-| File | Description |
-|------|-------------|
-| tests/fixtures/hook_inputs/write_simple.json | Sample PreToolUse Write input |
-| tests/fixtures/hook_inputs/edit_simple.json | Sample PreToolUse Edit input |
-| tests/fixtures/hook_inputs/malformed.json | Invalid JSON for error testing |
-| tests/fixtures/contracts/no-force-unwrap.yaml | Sample forbid_pattern contract |
-| tests/fixtures/contracts/require-docstring.yaml | Sample require_pattern contract |
-| tests/fixtures/contracts/invalid-regex.yaml | Invalid contract for validation testing |
+| File                                            | Description                             |
+| ----------------------------------------------- | --------------------------------------- |
+| tests/fixtures/hook_inputs/write_simple.json    | Sample PreToolUse Write input           |
+| tests/fixtures/hook_inputs/edit_simple.json     | Sample PreToolUse Edit input            |
+| tests/fixtures/hook_inputs/malformed.json       | Invalid JSON for error testing          |
+| tests/fixtures/contracts/no-force-unwrap.yaml   | Sample forbid_pattern contract          |
+| tests/fixtures/contracts/require-docstring.yaml | Sample require_pattern contract         |
+| tests/fixtures/contracts/invalid-regex.yaml     | Invalid contract for validation testing |
 
 ### Documentation
 
-| File | Description |
-|------|-------------|
-| docs/specs/enforce.md | Complete PRD (940 lines) |
-| templates/hooks.json | Hook configuration template |
-| README.md | Updated with v1.8 features |
-| CHANGELOG.md | Added v1.8.0 entry |
+| File                  | Description                 |
+| --------------------- | --------------------------- |
+| docs/specs/enforce.md | Complete PRD (940 lines)    |
+| templates/hooks.json  | Hook configuration template |
+| README.md             | Updated with v1.8 features  |
+| CHANGELOG.md          | Added v1.8.0 entry          |
 
 ### Modified
 
-| File | Changes |
-|------|---------|
-| tools/cli.py | +12 lines — Added enforce group with check/install subcommands |
-| tests/conftest.py | +29 lines — Added fixture helpers |
+| File              | Changes                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| tools/cli.py      | +12 lines — Added enforce group with check/install subcommands |
+| tests/conftest.py | +29 lines — Added fixture helpers                              |
 
 ## Architecture Overview
 
@@ -161,109 +161,109 @@ be05551 Add tool input parser (Phase 3)
 
 ### Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
+| Decision                                                | Rationale                                               |
+| ------------------------------------------------------- | ------------------------------------------------------- |
 | PreToolUse blocks errors, PostToolUse warns on warnings | Prevent errors proactively, surface warnings as context |
-| Project contracts override user contracts | Local project rules take precedence |
-| Skip enforcement for binary/unknown tools | Allow gracefully when unsure |
-| Exit code 0 for both allow/deny | Decision communicated via JSON, not exit code |
-| Inline ignores parsed from proposed content | User intent captured in code |
+| Project contracts override user contracts               | Local project rules take precedence                     |
+| Skip enforcement for binary/unknown tools               | Allow gracefully when unsure                            |
+| Exit code 0 for both allow/deny                         | Decision communicated via JSON, not exit code           |
+| Inline ignores parsed from proposed content             | User intent captured in code                            |
 
 ## Acceptance Criteria Status
 
 ### Phase 1: Steel Thread
 
-| Criterion | Status |
-|-----------|--------|
-| `phaser enforce check --stdin` parses JSON from stdin | ✅ |
-| `EnforceResult` dataclass with decision/reason/violations | ✅ |
-| `format_hook_output()` returns proper JSON structure | ✅ |
-| CLI registered in phaser command group | ✅ |
-| 630 baseline tests still pass | ✅ |
+| Criterion                                                 | Status |
+| --------------------------------------------------------- | ------ |
+| `phaser enforce check --stdin` parses JSON from stdin     | ✅     |
+| `EnforceResult` dataclass with decision/reason/violations | ✅     |
+| `format_hook_output()` returns proper JSON structure      | ✅     |
+| CLI registered in phaser command group                    | ✅     |
+| 630 baseline tests still pass                             | ✅     |
 
 ### Phase 2: Test Harness
 
-| Criterion | Status |
-|-----------|--------|
-| Fixture directories created | ✅ |
-| JSON hook input samples created | ✅ |
-| YAML contract samples created | ✅ |
-| conftest.py updated with fixture helpers | ✅ |
-| Skeleton test file created | ✅ |
+| Criterion                                | Status |
+| ---------------------------------------- | ------ |
+| Fixture directories created              | ✅     |
+| JSON hook input samples created          | ✅     |
+| YAML contract samples created            | ✅     |
+| conftest.py updated with fixture helpers | ✅     |
+| Skeleton test file created               | ✅     |
 
 ### Phase 3: Tool Input Parser
 
-| Criterion | Status |
-|-----------|--------|
-| `ProposedFile` dataclass with path/content/is_new | ✅ |
-| `ReconstructionResult` with files/skipped/skip_reason | ✅ |
-| `reconstruct_write()` handles Write tool | ✅ |
-| `reconstruct_edit()` reads disk and applies replacement | ✅ |
-| Binary detection via `is_valid_text()` | ✅ |
-| Graceful skip for missing file, old_str not found | ✅ |
-| 13 tests passing | ✅ |
+| Criterion                                               | Status |
+| ------------------------------------------------------- | ------ |
+| `ProposedFile` dataclass with path/content/is_new       | ✅     |
+| `ReconstructionResult` with files/skipped/skip_reason   | ✅     |
+| `reconstruct_write()` handles Write tool                | ✅     |
+| `reconstruct_edit()` reads disk and applies replacement | ✅     |
+| Binary detection via `is_valid_text()`                  | ✅     |
+| Graceful skip for missing file, old_str not found       | ✅     |
+| 13 tests passing                                        | ✅     |
 
 ### Phase 4: Contract Loader
 
-| Criterion | Status |
-|-----------|--------|
-| `Contract` dataclass with compiled_pattern property | ✅ |
-| `LoadResult` with contracts/errors/sources | ✅ |
-| `validate_contract()` checks all required fields | ✅ |
-| `load_contracts_from_dir()` loads *.yaml files | ✅ |
-| `load_contracts()` merges project + user with precedence | ✅ |
-| Invalid contracts skipped with error logged | ✅ |
-| 12 tests passing | ✅ |
+| Criterion                                                | Status |
+| -------------------------------------------------------- | ------ |
+| `Contract` dataclass with compiled_pattern property      | ✅     |
+| `LoadResult` with contracts/errors/sources               | ✅     |
+| `validate_contract()` checks all required fields         | ✅     |
+| `load_contracts_from_dir()` loads \*.yaml files          | ✅     |
+| `load_contracts()` merges project + user with precedence | ✅     |
+| Invalid contracts skipped with error logged              | ✅     |
+| 12 tests passing                                         | ✅     |
 
 ### Phase 5: Enforcement Engine
 
-| Criterion | Status |
-|-----------|--------|
-| `Violation` dataclass with all fields | ✅ |
-| `check_forbid_pattern()` finds pattern matches | ✅ |
-| `check_require_pattern()` detects missing patterns | ✅ |
-| `check_contract()` dispatches by type | ✅ |
-| `check_all_contracts()` iterates with severity filter | ✅ |
-| enforce_command wired to real logic | ✅ |
-| 3 enforcement tests passing | ✅ |
+| Criterion                                             | Status |
+| ----------------------------------------------------- | ------ |
+| `Violation` dataclass with all fields                 | ✅     |
+| `check_forbid_pattern()` finds pattern matches        | ✅     |
+| `check_require_pattern()` detects missing patterns    | ✅     |
+| `check_contract()` dispatches by type                 | ✅     |
+| `check_all_contracts()` iterates with severity filter | ✅     |
+| enforce_command wired to real logic                   | ✅     |
+| 3 enforcement tests passing                           | ✅     |
 
 ### Phase 6: Ignore Parser
 
-| Criterion | Status |
-|-----------|--------|
-| `IgnoreDirective` dataclass | ✅ |
-| `COMMENT_PATTERNS` for Python, JS, Swift, Go, HTML, CSS | ✅ |
-| `get_comment_pattern()` from file extension | ✅ |
-| `parse_ignores()` extracts directives from content | ✅ |
-| `should_ignore()` matches violation to directive | ✅ |
-| `filter_violations()` removes ignored violations | ✅ |
-| `phaser:ignore-next-line` supported | ✅ |
-| Multiple comma-separated rules supported | ✅ |
-| 17 tests passing | ✅ |
+| Criterion                                               | Status |
+| ------------------------------------------------------- | ------ |
+| `IgnoreDirective` dataclass                             | ✅     |
+| `COMMENT_PATTERNS` for Python, JS, Swift, Go, HTML, CSS | ✅     |
+| `get_comment_pattern()` from file extension             | ✅     |
+| `parse_ignores()` extracts directives from content      | ✅     |
+| `should_ignore()` matches violation to directive        | ✅     |
+| `filter_violations()` removes ignored violations        | ✅     |
+| `phaser:ignore-next-line` supported                     | ✅     |
+| Multiple comma-separated rules supported                | ✅     |
+| 17 tests passing                                        | ✅     |
 
 ### Phase 7: Integration + Performance
 
-| Criterion | Status |
-|-----------|--------|
-| End-to-end clean write test | ✅ |
-| End-to-end violation blocked test | ✅ |
-| End-to-end ignore applied test | ✅ |
-| End-to-end binary file test | ✅ |
-| End-to-end no contracts test | ✅ |
-| Performance: <500ms average with 20 contracts | ✅ |
-| 6 integration tests passing | ✅ |
+| Criterion                                     | Status |
+| --------------------------------------------- | ------ |
+| End-to-end clean write test                   | ✅     |
+| End-to-end violation blocked test             | ✅     |
+| End-to-end ignore applied test                | ✅     |
+| End-to-end binary file test                   | ✅     |
+| End-to-end no contracts test                  | ✅     |
+| Performance: <500ms average with 20 contracts | ✅     |
+| 6 integration tests passing                   | ✅     |
 
 ### Phase 8: Documentation + Install
 
-| Criterion | Status |
-|-----------|--------|
-| `HOOK_CONFIG` constant defined | ✅ |
-| `install_command` with --scope, --dry-run, --force | ✅ |
-| `phaser enforce check` command | ✅ |
-| `phaser enforce install` command | ✅ |
-| templates/hooks.json created | ✅ |
-| README updated with v1.8 section | ✅ |
-| CHANGELOG updated with 1.8.0 entry | ✅ |
+| Criterion                                          | Status |
+| -------------------------------------------------- | ------ |
+| `HOOK_CONFIG` constant defined                     | ✅     |
+| `install_command` with --scope, --dry-run, --force | ✅     |
+| `phaser enforce check` command                     | ✅     |
+| `phaser enforce install` command                   | ✅     |
+| templates/hooks.json created                       | ✅     |
+| README updated with v1.8 section                   | ✅     |
+| CHANGELOG updated with 1.8.0 entry                 | ✅     |
 
 ## Issues Encountered
 
@@ -316,6 +316,7 @@ phaser enforce install
 ### 3. Work Normally
 
 Claude Code will now:
+
 - Block edits that violate `error`-severity contracts
 - Warn about `warning`-severity violations after writes
 
@@ -330,10 +331,10 @@ let other = another!
 
 ## Contract Locations
 
-| Location | Purpose | Precedence |
-|----------|---------|------------|
-| `.claude/contracts/*.yaml` | Project-specific rules | Higher |
-| `~/.phaser/contracts/*.yaml` | User-wide rules | Lower |
+| Location                     | Purpose                | Precedence |
+| ---------------------------- | ---------------------- | ---------- |
+| `.claude/contracts/*.yaml`   | Project-specific rules | Higher     |
+| `~/.phaser/contracts/*.yaml` | User-wide rules        | Lower      |
 
 Project contracts with the same `rule_id` override user contracts.
 
@@ -361,4 +362,4 @@ git push --force-with-lease
 
 ---
 
-*Phaser v1.8.0 — Hook-Based Contract Enforcement*
+_Phaser v1.8.0 — Hook-Based Contract Enforcement_

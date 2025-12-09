@@ -187,7 +187,7 @@ Phaser/
 ├── global-claude-snippet.md  ← Add to ~/.claude/CLAUDE.md
 ├── specs/                    ← Feature specifications
 ├── tools/                    ← CLI modules
-├── tests/                    ← Test suite (391 tests)
+├── tests/                    ← Test suite (685+ tests)
 ├── templates/                ← Audit templates
 ├── examples/                 ← Sample audits
 └── docs/                     ← Additional documentation
