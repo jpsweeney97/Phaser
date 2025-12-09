@@ -409,33 +409,43 @@ class PhaserStorage:
         Write file atomically using temp-then-rename pattern.
 
         Includes retry logic for handling concurrent access.
+
+        Args:
+            path: Destination file path
+            content: String content to write
+
+        Raises:
+            BlockingIOError: If file lock cannot be acquired after retries
+            OSError: If write fails (e.g., disk full, permission denied)
         """
         tmp_path = path.with_suffix(path.suffix + ".tmp")
 
-        for attempt, delay in enumerate(RETRY_DELAYS):
-            try:
-                # Write to temp file
-                with open(tmp_path, "w", encoding="utf-8") as f:
-                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-                    try:
-                        f.write(content)
-                        f.flush()
-                        os.fsync(f.fileno())
-                    finally:
-                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        try:
+            for attempt, delay in enumerate(RETRY_DELAYS):
+                try:
+                    # Write to temp file
+                    with open(tmp_path, "w", encoding="utf-8") as f:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                        try:
+                            f.write(content)
+                            f.flush()
+                            os.fsync(f.fileno())
+                        finally:
+                            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
-                # Atomic rename
-                tmp_path.rename(path)
-                return
+                    # Atomic rename
+                    tmp_path.rename(path)
+                    return
 
-            except BlockingIOError:
-                if attempt == MAX_RETRIES - 1:
-                    raise
-                time.sleep(delay)
-
-        # Clean up temp file if it exists
-        if tmp_path.exists():
-            tmp_path.unlink()
+                except BlockingIOError:
+                    if attempt == MAX_RETRIES - 1:
+                        raise
+                    time.sleep(delay)
+        except OSError:
+            # Clean up temp file on failure (disk full, permission denied, etc.)
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise
 
     def _merge_config(
         self,

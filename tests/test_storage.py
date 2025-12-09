@@ -357,3 +357,56 @@ class TestAtomicWriteSafety:
         # Verify content is valid
         retrieved = storage.get_audit(audit_id)
         assert retrieved is not None
+
+
+class TestAtomicWriteErrorHandling:
+    """Tests for _atomic_write error handling and cleanup."""
+
+    def test_cleans_up_temp_file_on_write_error(
+        self, storage: PhaserStorage, temp_dir: Path, monkeypatch
+    ) -> None:
+        """Verify temp file is cleaned up when write fails."""
+        storage.ensure_directories()
+        test_file = storage.get_path("test.json")
+        tmp_file = test_file.with_suffix(".json.tmp")
+
+        # Create a temp file to simulate partial write
+        tmp_file.write_text("partial")
+
+        # Make rename fail to simulate disk error after write
+        def fail_rename(self, target):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(Path, "rename", fail_rename)
+
+        with pytest.raises(OSError, match="No space left"):
+            storage._atomic_write(test_file, '{"test": 1}')
+
+        # Temp file should be cleaned up
+        assert not tmp_file.exists()
+
+    def test_reraises_oserror_after_cleanup(
+        self, storage: PhaserStorage, temp_dir: Path, monkeypatch
+    ) -> None:
+        """Verify OSError is re-raised after cleanup."""
+        storage.ensure_directories()
+        test_file = storage.get_path("test.json")
+
+        def fail_open(*args, **kwargs):
+            raise OSError(13, "Permission denied")
+
+        monkeypatch.setattr("builtins.open", fail_open)
+
+        with pytest.raises(OSError, match="Permission denied"):
+            storage._atomic_write(test_file, '{"test": 1}')
+
+    def test_no_temp_file_left_on_success(
+        self, storage: PhaserStorage
+    ) -> None:
+        """Verify no temp files remain after successful write."""
+        storage.ensure_directories()
+        test_file = storage.get_path("success.json")
+
+        storage._atomic_write(test_file, '{"success": true}')
+
+        assert test_file.exists()
