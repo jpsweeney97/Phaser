@@ -137,6 +137,9 @@ def load_contracts_from_dir(contracts_dir: Path, source: str) -> LoadResult:
                 data = yaml.safe_load(f)
             if not data:
                 continue
+            if not isinstance(data, dict):
+                warnings.append(f"{yaml_file.name}: Expected YAML dict, got {type(data).__name__}")
+                continue
             contract, error = validate_contract(data, source)
             if error:
                 warnings.append(f"{yaml_file.name}: {error}")
